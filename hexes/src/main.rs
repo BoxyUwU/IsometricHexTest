@@ -1,4 +1,5 @@
 mod systems;
+#[allow(dead_code)]
 mod consts;
 
 use consts::*;
@@ -70,24 +71,6 @@ impl Game {
             .with_rendering_systems()
             .with_system(system!(render_hex_map))
             .build();
-
-        world.run(|
-            mut entities: EntitiesViewMut,
-            mut sprites: ViewMut<Sprite>,
-            mut transforms: ViewMut<Transform>, | {
-                entities.add_entity(
-                    (
-                        &mut sprites, 
-                        &mut transforms,
-                    ),
-                    (
-                        Sprite::from_command(
-                            DrawCommand::new(textures::FLOOR)
-                        ),
-                        Transform::new(0.0, 0.0),
-                    ),
-                );
-        });
 
         Ok(Game {
             world,
