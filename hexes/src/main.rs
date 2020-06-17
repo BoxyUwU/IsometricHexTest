@@ -26,6 +26,9 @@ use vermarine_lib::{
             self,
             Color,
         },
+        input::{
+            InputContext,
+        },
     },
     shipyard::{
         self,
@@ -60,7 +63,8 @@ impl Game {
     pub fn new(ctx: &mut Context) -> tetra::Result<Self> {
         let mut world = World::new();
 
-        world.add_unique(map::Map::new());
+        world.add_unique(map::Map::new(100, 100));
+        world.add_unique((*ctx.input_context()).clone());
 
         world
             .add_rendering_workload(ctx)
@@ -75,7 +79,14 @@ impl Game {
 }
 
 impl State<Res> for Game {
-    fn update(&mut self, _ctx: &mut Context, _resources: &mut Res) -> tetra::Result<Trans<Res>> {        
+    fn update(&mut self, ctx: &mut Context, _resources: &mut Res) -> tetra::Result<Trans<Res>> {      
+        { // We need this scope so that the borrow on InputContext gets dropped before systems run
+            let input_ctx = ctx.input_context();
+            let mut input = self.world.borrow::<UniqueViewMut<InputContext>>();
+            *input = (*input_ctx).clone();
+        }
+        self.world.run(systems::move_camera);
+
         Ok(Trans::None)
     }
 

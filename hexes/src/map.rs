@@ -8,6 +8,10 @@ use crate::{
     tetra::{
         math::{
             Vec3,
+            Vec2,
+        },
+        graphics::{
+            Camera,
         },
     },
 };
@@ -23,37 +27,56 @@ use vermarine_lib::{
 
 pub struct Map {
     tiles: Vec<u8>,
+    width: usize,
+    height: usize,
+    position: Vec2<f32>,
 }
 
 impl Map {
-    pub fn new() -> Self {
-        let mut tiles = vec![0; 100 * 100];
+    pub fn new(width: usize, height: usize) -> Self {
+        let mut tiles = vec![0; width * height];
         use rand::SeedableRng;
         use rand::Rng;
         let mut rand = rand::rngs::StdRng::seed_from_u64(100);
         for tile in tiles.iter_mut() {
             *tile = rand.gen_range(0, 3);
         }
+
         Map {
-            tiles
+            tiles,
+            width,
+            height,
+            position: Vec2::new(-(width as f32) / 2.0, -(height as f32) / 2.0,)
         }
     }
 }
 
-pub fn render_hex_map(mut draw_buffer: UniqueViewMut<DrawBuffer>, map: UniqueView<Map>) {
-    for y in 0..100 {
-        for x in 0..100 {
+pub fn render_hex_map(mut draw_buffer: UniqueViewMut<DrawBuffer>, map: UniqueView<Map>, camera: UniqueView<Camera>) {
+    let camera_pos: Vec2<f32> = camera.position / Vec2::new(TILE_WIDTH, TILE_VERT_STEP) - map.position;
+
+    let startx = (camera_pos.x - 20.0).max(0.0).min(map.width as f32 - 1.0) as usize;
+    let endx = (camera_pos.x + 20.0).max(0.0).min(map.width as f32 - 1.0) as usize;
+    let starty = (camera_pos.y - 20.0).max(0.0).min(map.height as f32 - 1.0) as usize;
+    let endy = (camera_pos.y + 20.0).max(0.0).min(map.height as f32 - 1.0) as usize;
+
+    for y in starty..=endy {
+        for x in startx..=endx {
             let (draw_x, draw_y) =
                 (
                     if y % 2 == 0 {
-                        (x as i32 - 50) as f32 * TILE_WIDTH
+                        (x as i32) as f32 * TILE_WIDTH
                     } else {
-                        (x as i32 - 50) as f32 * TILE_WIDTH - (TILE_WIDTH / 2.0)
+                        (x as i32) as f32 * TILE_WIDTH - (TILE_WIDTH / 2.0)
                     },
-                    (y as i32 - 50) as f32 * (TILE_VERT_STEP)
+                    (y as i32) as f32 * (TILE_VERT_STEP)
                 );
-            
-            let height = map.tiles[100 * y + x];
+
+            let (draw_x, draw_y) =
+                (
+                    draw_x + map.position.x * TILE_WIDTH,
+                    draw_y + map.position.y * TILE_VERT_STEP,
+                );
+            let height = map.tiles[map.width * y + x];
             render_hex(&mut draw_buffer, draw_x, draw_y, height);
         }
     }

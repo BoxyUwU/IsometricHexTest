@@ -13,3 +13,5 @@ pub mod draw_layers {
 pub const TILE_WIDTH: f32 = 48.0;
 pub const TILE_HEIGHT: f32 = 36.0;
 pub const TILE_VERT_STEP: f32 = 24.0;
+
+pub const CAM_SPEED: f32 = 5.0;
