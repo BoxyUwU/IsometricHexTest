@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 vermarine-lib = { path = "../vermarine-lib/vermarine-lib" }
+rand = "0.7"

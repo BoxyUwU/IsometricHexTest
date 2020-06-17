@@ -1,11 +1,10 @@
 mod systems;
 #[allow(dead_code)]
 mod consts;
+mod map;
 
-use consts::*;
-
-use systems::{
-    render_hex_map
+use map::{
+    render_hex_map,
 };
 
 use vermarine_lib::{
@@ -14,13 +13,8 @@ use vermarine_lib::{
         RenderingWorkloadSystems,
         draw_buffer::{
             DrawBuffer,
-            DrawCommand,
         },
         Drawables,
-        Sprite,
-    },
-    components::{
-        Transform,
     },
     tetra::{
         self,
@@ -65,6 +59,8 @@ pub struct Game {
 impl Game {
     pub fn new(ctx: &mut Context) -> tetra::Result<Self> {
         let mut world = World::new();
+
+        world.add_unique(map::Map::new());
 
         world
             .add_rendering_workload(ctx)
