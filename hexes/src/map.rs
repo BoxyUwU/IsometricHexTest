@@ -12,6 +12,7 @@ use crate::{
         },
         graphics::{
             Camera,
+            Color,
         },
     },
 };
@@ -52,7 +53,7 @@ impl Map {
 }
 
 pub fn render_hex_map(mut draw_buffer: UniqueViewMut<DrawBuffer>, map: UniqueView<Map>, camera: UniqueView<Camera>) {
-    let camera_pos: Vec2<f32> = camera.position / Vec2::new(TILE_WIDTH, TILE_VERT_STEP) - map.position;
+    let camera_pos: Vec2<f32> = camera.position / Vec2::new(FLOOR_WIDTH, FLOOR_VERT_STEP) - map.position;
 
     let startx = (camera_pos.x - 20.0).max(0.0).min(map.width as f32 - 1.0) as usize;
     let endx = (camera_pos.x + 20.0).max(0.0).min(map.width as f32 - 1.0) as usize;
@@ -64,17 +65,17 @@ pub fn render_hex_map(mut draw_buffer: UniqueViewMut<DrawBuffer>, map: UniqueVie
             let (draw_x, draw_y) =
                 (
                     if y % 2 == 0 {
-                        (x as i32) as f32 * TILE_WIDTH
+                        (x as i32) as f32 * FLOOR_WIDTH
                     } else {
-                        (x as i32) as f32 * TILE_WIDTH - (TILE_WIDTH / 2.0)
+                        (x as i32) as f32 * FLOOR_WIDTH - (FLOOR_WIDTH / 2.0)
                     },
-                    (y as i32) as f32 * (TILE_VERT_STEP)
+                    (y as i32) as f32 * (FLOOR_VERT_STEP)
                 );
 
             let (draw_x, draw_y) =
                 (
-                    draw_x + map.position.x * TILE_WIDTH,
-                    draw_y + map.position.y * TILE_VERT_STEP,
+                    draw_x + map.position.x * FLOOR_WIDTH,
+                    draw_y + map.position.y * FLOOR_VERT_STEP,
                 );
             let height = map.tiles[map.width * y + x];
             render_hex(&mut draw_buffer, draw_x, draw_y, height);
@@ -84,33 +85,59 @@ pub fn render_hex_map(mut draw_buffer: UniqueViewMut<DrawBuffer>, map: UniqueVie
 
 
 pub fn render_hex(draw_buffer: &mut UniqueViewMut<DrawBuffer>, x: f32, y: f32, height: u8) {
-    draw_buffer.draw(create_floor_draw_cmd(x, y, height as f32 * TILE_VERT_STEP, height));
+    draw_buffer.draw(create_floor_draw_cmd(x, y, height as f32 * FLOOR_DEPTH_STEP, height));
 
-    let start_height = height as f32 * TILE_VERT_STEP - TILE_HEIGHT / 3.0;
-    for i in 0..height as usize * 2 {
-        draw_buffer.draw(create_wall_draw_cmd(x, y, start_height - i as f32 * TILE_HEIGHT / 3.0));
+    let height = height as f32;
+    let start_height = height * FLOOR_DEPTH_STEP - WALL_VERT_OFFSET;
+    let walls_per_step = FLOOR_DEPTH_STEP / WALL_VERT_STEP;
+    let walls_needed = walls_per_step * height;
+    for i in 0..walls_needed as usize {
+        let texture = 
+            if walls_needed - i as f32 <= walls_per_step {
+                1
+            } else {
+                2
+            };
+        
+        draw_buffer.draw(create_wall_draw_cmd(x, y, start_height - (i as f32 * WALL_VERT_STEP), texture));
     }
 }
 
 fn create_floor_draw_cmd(x: f32, y: f32, height: f32, texture: u8) -> DrawCommand {
-    let texture = 
+    let color = 
         if texture == 0 {
-            textures::FLOOR_DARK
+            let v = 0.5;
+            Color::rgba(v, v, v, 1.0)
         } else if texture == 1 {
-            textures::FLOOR_DIM
+            let v = 0.7;
+            Color::rgba(v, v, v, 1.0)
         } else {
-            textures::FLOOR
+            let v = 1.0;
+            Color::rgba(v, v, v, 1.0)
         };
 
-    DrawCommand::new(texture)
+    DrawCommand::new(textures::FLOOR)
         .position(Vec3::new(x, y, height))
         .draw_layer(draw_layers::FLOOR)
         .draw_iso(true)
+        .color(color)
 }
 
-fn create_wall_draw_cmd(x: f32, y: f32, height: f32) -> DrawCommand {
+fn create_wall_draw_cmd(x: f32, y: f32, height: f32, texture: u8) -> DrawCommand {
+    let color =
+        if texture == 1 {
+            let v = 0.5;
+            Color::rgba(v, v, v, 1.0)
+        } else if texture == 2{
+            let v = 0.7;
+            Color::rgba(v, v, v, 1.0)
+        } else {
+            panic!();
+        };
+
     DrawCommand::new(textures::WALL)
         .position(Vec3::new(x, y, height))
         .draw_layer(draw_layers::WALL)
         .draw_iso(true)
+        .color(color)
 }
