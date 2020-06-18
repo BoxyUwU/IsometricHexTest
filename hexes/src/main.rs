@@ -69,11 +69,11 @@ impl Game {
 
 impl State<Res> for Game {
     fn update(&mut self, ctx: &mut Context, _res: &mut Res) -> tetra::Result<Trans<Res>> {
-        { // We need this scope so that the borrow on InputContext gets dropped before systems run
         let input_ctx = ctx.input_context();
-            let mut input = self.world.borrow::<UniqueViewMut<InputContext>>();
-            *input = (*input_ctx).clone();
-        }
+        self.world.run(|mut ctx: UniqueViewMut<InputContext>| {
+            *ctx = (*input_ctx).clone();
+        });
+
         self.world.run(systems::move_camera);
 
         Ok(Trans::None)
