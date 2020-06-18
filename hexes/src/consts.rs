@@ -11,7 +11,7 @@ pub mod draw_layers {
 pub const FLOOR_WIDTH: f32 = 36.0;
 pub const FLOOR_HEIGHT: f32 = 36.0;
 pub const FLOOR_VERT_STEP: f32 = 28.0;
-pub const FLOOR_DEPTH_STEP: f32 = 12.0;
+pub const FLOOR_DEPTH_STEP: f32 = 24.0;
 
 pub const WALL_VERT_OFFSET: f32 = 12.0;
 pub const WALL_VERT_STEP: f32 = 12.0;

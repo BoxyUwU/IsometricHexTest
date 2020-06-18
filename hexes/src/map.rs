@@ -41,7 +41,7 @@ impl Map {
         use rand::Rng;
         let mut rand = rand::rngs::StdRng::seed_from_u64(100);
         for tile in tiles.iter_mut() {
-            *tile = rand.gen_range(0, 3);
+            *tile = rand.gen_range(0, 6);
         }
 
         Map {
@@ -94,7 +94,7 @@ pub fn render_hex(drawables: &NonSendSync<UniqueViewMut<Drawables>>, draw_buffer
     let walls_needed = walls_per_step * height;
     for i in 0..walls_needed as usize {
         let texture = 
-            if walls_needed - i as f32 <= walls_per_step {
+            if (walls_needed as usize - i) % 2 == 1 {
                 1
             } else {
                 2
@@ -113,7 +113,7 @@ fn create_floor_draw_cmd(drawables: &NonSendSync<UniqueViewMut<Drawables>>, x: f
             let v = 0.7;
             Color::rgba(v, v, v, 1.0)
         } else {
-            let v = 1.0;
+            let v = 0.9;
             Color::rgba(v, v, v, 1.0)
         };
 
