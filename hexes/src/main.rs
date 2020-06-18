@@ -14,7 +14,6 @@ use vermarine_lib::{
         draw_buffer::{
             DrawBuffer,
         },
-        Drawables,
     },
     tetra::{
         self,
@@ -36,23 +35,13 @@ use vermarine_lib::{
     },
 };
 
-pub struct Res {
-    drawables: Drawables,
-}
-
-impl Res {
-    pub fn new(ctx: &mut Context) -> tetra::Result<Self> {
-        Ok(Res {
-            drawables: Drawables::new(ctx)?,
-        })
-    }
-}
+type Res = ();
 
 fn main() -> tetra::Result {
     ContextBuilder::new("Hexes", 1280, 720)
         .show_mouse(true)
         .build()?
-        .run(Game::new, Res::new)
+        .run(Game::new, |_| Ok(()))
 }
 
 pub struct Game {
@@ -79,9 +68,9 @@ impl Game {
 }
 
 impl State<Res> for Game {
-    fn update(&mut self, ctx: &mut Context, _resources: &mut Res) -> tetra::Result<Trans<Res>> {      
+    fn update(&mut self, ctx: &mut Context, _res: &mut Res) -> tetra::Result<Trans<Res>> {
         { // We need this scope so that the borrow on InputContext gets dropped before systems run
-            let input_ctx = ctx.input_context();
+        let input_ctx = ctx.input_context();
             let mut input = self.world.borrow::<UniqueViewMut<InputContext>>();
             *input = (*input_ctx).clone();
         }
@@ -90,11 +79,11 @@ impl State<Res> for Game {
         Ok(Trans::None)
     }
 
-    fn draw(&mut self, ctx: &mut Context, res: &mut Res) -> tetra::Result {
+    fn draw(&mut self, ctx: &mut Context, _res: &mut Res) -> tetra::Result {
         graphics::clear(ctx, Color::rgb(0.392, 0.584, 0.929));
 
         self.world.run_workload("Rendering");
-        self.world.run_with_data(DrawBuffer::flush, (ctx, &res.drawables));
+        self.world.run_with_data(DrawBuffer::flush, ctx);
         
         Ok(())
     }

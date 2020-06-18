@@ -23,6 +23,7 @@ use vermarine_lib::{
             DrawBuffer,
             DrawCommand,
         },
+        Drawables,
     },
 };
 
@@ -52,7 +53,7 @@ impl Map {
     }
 }
 
-pub fn render_hex_map(mut draw_buffer: UniqueViewMut<DrawBuffer>, map: UniqueView<Map>, camera: UniqueView<Camera>) {
+pub fn render_hex_map(drawables: NonSendSync<UniqueViewMut<Drawables>>, mut draw_buffer: UniqueViewMut<DrawBuffer>, map: UniqueView<Map>, camera: UniqueView<Camera>) {
     let camera_pos: Vec2<f32> = camera.position / Vec2::new(FLOOR_WIDTH, FLOOR_VERT_STEP) - map.position;
 
     let startx = (camera_pos.x - 20.0).max(0.0).min(map.width as f32 - 1.0) as usize;
@@ -78,14 +79,14 @@ pub fn render_hex_map(mut draw_buffer: UniqueViewMut<DrawBuffer>, map: UniqueVie
                     draw_y + map.position.y * FLOOR_VERT_STEP,
                 );
             let height = map.tiles[map.width * y + x];
-            render_hex(&mut draw_buffer, draw_x, draw_y, height);
+            render_hex(&drawables, &mut draw_buffer, draw_x, draw_y, height);
         }
     }
 }
 
 
-pub fn render_hex(draw_buffer: &mut UniqueViewMut<DrawBuffer>, x: f32, y: f32, height: u8) {
-    draw_buffer.draw(create_floor_draw_cmd(x, y, height as f32 * FLOOR_DEPTH_STEP, height));
+pub fn render_hex(drawables: &NonSendSync<UniqueViewMut<Drawables>>, draw_buffer: &mut UniqueViewMut<DrawBuffer>, x: f32, y: f32, height: u8) {
+    draw_buffer.draw(create_floor_draw_cmd(drawables, x, y, height as f32 * FLOOR_DEPTH_STEP, height / 2));
 
     let height = height as f32;
     let start_height = height * FLOOR_DEPTH_STEP - WALL_VERT_OFFSET;
@@ -99,11 +100,11 @@ pub fn render_hex(draw_buffer: &mut UniqueViewMut<DrawBuffer>, x: f32, y: f32, h
                 2
             };
         
-        draw_buffer.draw(create_wall_draw_cmd(x, y, start_height - (i as f32 * WALL_VERT_STEP), texture));
+        draw_buffer.draw(create_wall_draw_cmd(drawables, x, y, start_height - (i as f32 * WALL_VERT_STEP), texture));
     }
 }
 
-fn create_floor_draw_cmd(x: f32, y: f32, height: f32, texture: u8) -> DrawCommand {
+fn create_floor_draw_cmd(drawables: &NonSendSync<UniqueViewMut<Drawables>>, x: f32, y: f32, height: f32, texture: u8) -> DrawCommand {
     let color = 
         if texture == 0 {
             let v = 0.5;
@@ -116,14 +117,14 @@ fn create_floor_draw_cmd(x: f32, y: f32, height: f32, texture: u8) -> DrawComman
             Color::rgba(v, v, v, 1.0)
         };
 
-    DrawCommand::new(textures::FLOOR)
+    DrawCommand::new(drawables.alias[textures::FLOOR])
         .position(Vec3::new(x, y, height))
         .draw_layer(draw_layers::FLOOR)
         .draw_iso(true)
         .color(color)
 }
 
-fn create_wall_draw_cmd(x: f32, y: f32, height: f32, texture: u8) -> DrawCommand {
+fn create_wall_draw_cmd(drawables: &NonSendSync<UniqueViewMut<Drawables>>, x: f32, y: f32, height: f32, texture: u8) -> DrawCommand {
     let color =
         if texture == 1 {
             let v = 0.5;
@@ -135,7 +136,7 @@ fn create_wall_draw_cmd(x: f32, y: f32, height: f32, texture: u8) -> DrawCommand
             panic!();
         };
 
-    DrawCommand::new(textures::WALL)
+    DrawCommand::new(drawables.alias[textures::WALL])
         .position(Vec3::new(x, y, height))
         .draw_layer(draw_layers::WALL)
         .draw_iso(true)
