@@ -82,11 +82,8 @@ impl State<Res> for Game {
     fn draw(&mut self, ctx: &mut Context, _res: &mut Res) -> tetra::Result {
         graphics::clear(ctx, Color::rgb(0.392, 0.584, 0.929));
 
-        use std::time;
-        let now = time::Instant::now();
         self.world.run_workload("Rendering");
         self.world.run_with_data(DrawBuffer::flush, ctx);
-        println!("{:?}", now.elapsed());
         
         Ok(())
     }
