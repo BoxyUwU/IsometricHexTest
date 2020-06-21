@@ -35,6 +35,7 @@ pub struct Map {
     width: usize,
     height: usize,
     position: Vec2<f32>,
+    tallest: u8,
 }
 
 use rand::SeedableRng;
@@ -45,9 +46,13 @@ impl Map {
     pub fn new(width: usize, height: usize) -> Self {
         let mut tiles: Vec<u8> = vec![0; width * height];
         let mut rand = StdRng::seed_from_u64(100);
-
+        let mut tallest = 0;
         for tile in tiles.iter_mut() {
-            *tile = rand.gen_range(0, 3);
+            let value = rand.gen_range(0, 3);
+            *tile = value;
+            if value > tallest {
+                tallest = value;
+            }
         }
 
         Map {
@@ -55,38 +60,64 @@ impl Map {
             width,
             height,
             position: Vec2::new(-(width as f32) / 2.0, -(height as f32) / 2.0),
+            tallest,
         }
     }
 
-    pub fn pixel_to_hex(&mut self, mut pos: Vec2<f32>) -> (i32, i32) {
-        pos -= Vec2::new(18., 18.);
-        pos.x -= self.position.x * FLOOR_WIDTH;
-        pos.y -= self.position.y * FLOOR_VERT_STEP;
+    pub fn pixel_to_hex(&mut self, pos: Vec2<f32>) -> (i32, i32) {
+        let mut tallest_height: Option<(u8, i32, i32)> = None;
 
-        let size_x = FLOOR_WIDTH / f32::sqrt(3.0);
-        // See axial_to_pixel for comment on why this value
-        let size_y = 18.66666666666666666;
+        for height in 0..=self.tallest {
+            let height_offset = height as f32 * FLOOR_DEPTH_STEP;
 
-        let pos = Vec2::new(
-            pos.x / size_x,
-            pos.y / size_y,
-        );
+            let mut pos = pos;
+            pos -= Vec2::new(18., 18.);
+            pos.x -= self.position.x * FLOOR_WIDTH;
+            pos.y -= self.position.y * FLOOR_VERT_STEP;
+            pos.y += height_offset;
+    
+            let size_x = FLOOR_WIDTH / f32::sqrt(3.0);
+            // See axial_to_pixel for comment on why this value
+            let size_y = 18.66666666666666666;
+    
+            let pos = Vec2::new(
+                pos.x / size_x,
+                pos.y / size_y,
+            );
+    
+            let b0 = f32::sqrt(3.0) / 3.0;
+            let b1 = -1.0 / 3.0;
+            let b2 = 0.0;
+            let b3 = 2.0 / 3.0;
+    
+            let q: f32 = b0 * pos.x + b1 * pos.y;
+            let r: f32 = b2 * pos.x + b3 * pos.y;
 
-        let b0 = f32::sqrt(3.0) / 3.0;
-        let b1 = -1.0 / 3.0;
-        let b2 = 0.0;
-        let b3 = 2.0 / 3.0;
+            let (q, r, s) = (q, r, -r -q);
 
-        let q: f32 = b0 * pos.x + b1 * pos.y;
-        let r: f32 = b2 * pos.x + b3 * pos.y;
+            let (q, r, _) = cube_round(q, r, s);
+    
+            let (x, y) = cube_to_offset(q, r);
 
-        let (q, r, s) = (q, r, -r -q);
+            if x < 0 || x >= self.width as i32 || y < 0 || y >= self.height as i32 {
+                continue;
+            }
 
-        let (q, r, _) = cube_round(q, r, s);
+            let tile_height = self.tiles[self.width * y as usize + x as usize];
+            
+            if tile_height != height {
+                continue;
+            }
+            if tallest_height.is_none() || tile_height > tallest_height.unwrap().0 {
+                tallest_height = Some((tile_height, x, y));
+            }
+        }
 
-        let offset = cube_to_offset(q, r);
-
-        offset
+        if let Some((_, x, y)) = tallest_height {
+            return (x, y);
+        } else {
+            return (-1, -1);
+        }
     }
 
     #[allow(dead_code)]
@@ -195,7 +226,8 @@ pub fn render_hex_map(input_ctx: UniqueView<InputContext>, drawables: NonSendSyn
         }
     }
 
-    let marker_tex = drawables.alias[textures::MARKER];
+    // Draw dots at hex centers
+    /*let marker_tex = drawables.alias[textures::MARKER];
     for y_tile in starty..endy {
         for x_tile in startx..endx {
             let (q, _, s) = offset_to_cube(x_tile as i32, y_tile as i32);
@@ -210,7 +242,7 @@ pub fn render_hex_map(input_ctx: UniqueView<InputContext>, drawables: NonSendSyn
                     .draw_iso(true)
             );
         }
-    }
+    }*/
 
     draw_buffer.end_command_pool();
 }
