@@ -52,7 +52,7 @@ impl Game {
     pub fn new(ctx: &mut Context) -> tetra::Result<Self> {
         let mut world = World::new();
 
-        world.add_unique(map::Map::new(20, 20));
+        world.add_unique(map::HexMap::new(2000, 2000));
         world.add_unique((*ctx.input_context()).clone());
 
         world
@@ -75,6 +75,7 @@ impl State<Res> for Game {
         });
 
         self.world.run(systems::move_camera);
+        self.world.run(systems::update_hex_map);
 
         Ok(Trans::None)
     }
