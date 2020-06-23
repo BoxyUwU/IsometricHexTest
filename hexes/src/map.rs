@@ -189,6 +189,7 @@ fn cube_round(q: f32, r: f32, s: f32) -> (i32, i32, i32) {
 
 pub fn render_hex_map(input_ctx: UniqueView<InputContext>, drawables: NonSendSync<UniqueViewMut<Drawables>>, mut draw_buffer: UniqueViewMut<DrawBuffer>, mut map: UniqueViewMut<HexMap>, camera: UniqueView<Camera>) {
     draw_buffer.new_command_pool(true);
+    let command_pool = draw_buffer.get_command_pool();
 
     let mouse_pos = camera.mouse_position(&input_ctx);
     let selected_hex = map.pixel_to_hex(mouse_pos);
@@ -201,55 +202,66 @@ pub fn render_hex_map(input_ctx: UniqueView<InputContext>, drawables: NonSendSyn
     let endy = (camera_pos.y + 20.0).max(0.0).min(map.height as f32 - 1.0) as usize;
 
     let (top_tex, wall_tex, brick_tex, brick_floor_tex) = (drawables.alias[textures::FLOOR], drawables.alias[textures::WALL], drawables.alias[textures::WALL_BRICK], drawables.alias[textures::FLOOR_BRICK]);
-    for y in starty..=endy {
-        for i in 0..3 {
-            for x in startx..=endx {
-                let (draw_x, draw_y) =
-                (
-                    if y % 2 == 1 {
-                        (x as i32) as f32 * FLOOR_WIDTH + (FLOOR_WIDTH / 2.0)
-                    } else {
-                        (x as i32) as f32 * FLOOR_WIDTH
-                    },
-                    (y as i32) as f32 * (FLOOR_VERT_STEP)
-                );
 
+    for height in 0..=MAX_BRICK_HEIGHT {
+        let mut wall_buffer: Vec<DrawCommand> = Vec::with_capacity(1024);
+        let mut wall_brick_buffer: Vec<DrawCommand> = Vec::with_capacity(1024);
+        let mut top_buffer: Vec<DrawCommand> = Vec::with_capacity(1024);
+        let mut top_brick_buffer: Vec<DrawCommand> = Vec::with_capacity(1024);
+        for y in starty..=endy {
+            for x in startx..=endx {
+                let tile = &map.tiles[map.width * y + x];
+                if tile.wall_height < height {
+                    continue;
+                }
+
+                let (draw_x, draw_y) =
+                    (
+                        if y % 2 == 1 {
+                            (x as i32) as f32 * FLOOR_WIDTH + (FLOOR_WIDTH / 2.0)
+                        } else {
+                            (x as i32) as f32 * FLOOR_WIDTH
+                        },
+                        (y as i32) as f32 * (FLOOR_VERT_STEP)
+                    );
                 let (draw_x, draw_y) =
                     (
                         draw_x + map.position.x * FLOOR_WIDTH,
                         draw_y + map.position.y * FLOOR_VERT_STEP,
                     );
-                let tile = &map.tiles[map.width * y + x];
+                
+                if height <= tile.ground_height && height != 0 {
+                    render_hex_walls(&mut wall_buffer, draw_x, draw_y, height, wall_tex);
+                }
+                if height > tile.ground_height && height <= tile.wall_height {
+                    render_hex_bricks(&mut wall_brick_buffer, draw_x, draw_y, height, brick_tex);
+                }
 
-                if i == 0 {
-                    render_hex_walls(&mut draw_buffer, draw_x, draw_y, tile, wall_tex);
-                }
-                if i == 1 {
-                    render_hex_bricks(&mut draw_buffer, draw_x, draw_y, tile, brick_tex);
-                }
-                if i == 2 {
-                    let color = if let Some((sel_x, sel_y)) = selected_hex {
-                        let color = if x == sel_x as usize && y == sel_y as usize {
-                            Color::RED
-                        } else {
-                            Color::WHITE
-                        };
-                        color
+                let color = if let Some((sel_x, sel_y)) = selected_hex {
+                    let color = if x == sel_x as usize && y == sel_y as usize {
+                        Color::RED
                     } else {
                         Color::WHITE
                     };
+                    color
+                } else {
+                    Color::WHITE
+                };
 
-
-                    if tile.ground_height >= tile.wall_height {
-                        render_hex_top(&mut draw_buffer, draw_x, draw_y, tile.ground_height, top_tex, color);
-                    } else {
-                        render_hex_brick_top(&mut draw_buffer, draw_x, draw_y, tile.wall_height, brick_floor_tex, color);
-                    };
+                if height == tile.ground_height && height == tile.wall_height {
+                    render_hex_top(&mut top_buffer, draw_x, draw_y, tile.ground_height, top_tex, color);
+                }
+                if height == tile.wall_height && height != tile.ground_height {
+                    render_hex_brick_top(&mut top_brick_buffer, draw_x, draw_y, tile.wall_height, brick_floor_tex, color);
                 }
             }
         }
+        command_pool.commands.extend(&wall_buffer);
+        command_pool.commands.extend(&wall_brick_buffer);
+        command_pool.commands.extend(&top_buffer);
+        command_pool.commands.extend(&top_brick_buffer);
     }
-
+    
     // Draw dots at hex centers
     /*let marker_tex = drawables.alias[textures::MARKER];
     for y_tile in starty..=endy {
@@ -271,12 +283,12 @@ pub fn render_hex_map(input_ctx: UniqueView<InputContext>, drawables: NonSendSyn
     draw_buffer.end_command_pool();
 }
 
-pub fn render_hex_top(draw_buffer: &mut DrawBuffer, x: f32, y: f32, height: u8, texture: u64, color: Color) {
+pub fn render_hex_top(draw_buffer: &mut Vec<DrawCommand>, x: f32, y: f32, height: u8, texture: u64, color: Color) {
     let mut draw_command = create_floor_draw_cmd(x, y, height as f32 * FLOOR_DEPTH_STEP, height, texture); 
     if color != Color::WHITE {
         draw_command = draw_command.color(color);
     }
-    draw_buffer.draw(draw_command);
+    draw_buffer.push(draw_command);
 }
 
 fn create_floor_draw_cmd(x: f32, y: f32, height: f32, color: u8, texture: u64) -> DrawCommand {
@@ -299,12 +311,12 @@ fn create_floor_draw_cmd(x: f32, y: f32, height: f32, color: u8, texture: u64) -
         .color(color)
 }
 
-pub fn render_hex_brick_top(draw_buffer: &mut DrawBuffer, x: f32, y: f32, height: u8, texture: u64, color: Color) {
+pub fn render_hex_brick_top(draw_buffer: &mut Vec<DrawCommand>, x: f32, y: f32, height: u8, texture: u64, color: Color) {
     let mut draw_command = create_brick_floor_draw_cmd(x, y, height as f32 * FLOOR_DEPTH_STEP, height, texture); 
     if color != Color::WHITE {
         draw_command = draw_command.color(color);
     }
-    draw_buffer.draw(draw_command);
+    draw_buffer.push(draw_command);
 }
 
 fn create_brick_floor_draw_cmd(x: f32, y: f32, height: f32, color: u8, texture: u64) -> DrawCommand {
@@ -330,21 +342,17 @@ fn create_brick_floor_draw_cmd(x: f32, y: f32, height: f32, color: u8, texture: 
         .color(color)
 }
 
-pub fn render_hex_walls(draw_buffer: &mut DrawBuffer, x: f32, y: f32, tile: &HexTileData, wall_tex: u64) {
-    let height = tile.ground_height as f32;
-    let start_height = height * FLOOR_DEPTH_STEP - WALL_VERT_OFFSET;
-    for i in 0..height as usize {
-        let color = 
-            if (height as usize - i) % 2 == 1 {
-                1
-            } else {
-                2
-            };
-        
-        draw_buffer.draw(
-            create_wall_draw_cmd(x, y, start_height - (i as f32 * WALL_VERT_STEP), color, wall_tex)
-        );
-    }
+pub fn render_hex_walls(draw_buffer: &mut Vec<DrawCommand>, x: f32, y: f32, height: u8, wall_tex: u64) {
+    let start_height = height as f32 * FLOOR_DEPTH_STEP - WALL_VERT_OFFSET;
+    let color = 
+        if height % 2 == 1 {
+            1
+        } else {
+            2
+        };
+    draw_buffer.push(
+        create_wall_draw_cmd(x, y, start_height, color, wall_tex)
+    );
 }
 
 fn create_wall_draw_cmd(x: f32, y: f32, height: f32, color: u8, texture: u64) -> DrawCommand {
@@ -367,16 +375,11 @@ fn create_wall_draw_cmd(x: f32, y: f32, height: f32, color: u8, texture: u64) ->
         .color(color)
 }
 
-pub fn render_hex_bricks(draw_buffer: &mut DrawBuffer, x: f32, y: f32, tile: &HexTileData, brick_tex: u64) {
-    let start_height = tile.ground_height as f32 * FLOOR_DEPTH_STEP - WALL_VERT_STEP;
-    if tile.wall_height > tile.ground_height {
-        for i in 1..=(tile.wall_height - tile.ground_height) {
-            let color = tile.ground_height + i;
-            draw_buffer.draw(
-                create_wall_brick_draw_cmd(x, y, start_height + (i as f32 * WALL_VERT_STEP), color, brick_tex)
-            );
-        }
-    }
+pub fn render_hex_bricks(draw_buffer: &mut Vec<DrawCommand>, x: f32, y: f32, height: u8, brick_tex: u64) {
+    let start_height = height as f32 * FLOOR_DEPTH_STEP - WALL_VERT_STEP;
+    draw_buffer.push(
+        create_wall_brick_draw_cmd(x, y, start_height, height, brick_tex)
+    );
 }
 
 fn create_wall_brick_draw_cmd(x: f32, y: f32, height: f32, color: u8, texture: u64) -> DrawCommand {

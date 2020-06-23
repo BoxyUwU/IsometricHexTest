@@ -52,7 +52,7 @@ impl Game {
     pub fn new(ctx: &mut Context) -> tetra::Result<Self> {
         let mut world = World::new();
 
-        world.add_unique(map::HexMap::new(2000, 2000));
+        world.add_unique(map::HexMap::new(200, 200));
         world.add_unique((*ctx.input_context()).clone());
 
         world
@@ -85,7 +85,7 @@ impl State<Res> for Game {
 
         self.world.run_workload("Rendering");
         self.world.run_with_data(DrawBuffer::flush, ctx);
-        
+
         Ok(())
     }
 }
