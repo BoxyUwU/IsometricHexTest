@@ -300,7 +300,7 @@ fn create_floor_draw_cmd(x: f32, y: f32, height: f32, color: u8, texture: u64) -
             let v = 0.8;
             Color::rgba(v, v, v, 1.0)
         } else {
-            let v = 1.0;
+            let v = 0.95;
             Color::rgba(v, v, v, 1.0)
         };
 
