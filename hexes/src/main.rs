@@ -7,6 +7,10 @@ use map::{
     render_hex_map,
 };
 
+use consts::{
+    *,
+};
+
 use vermarine_lib::{
     rendering::{
         RenderingWorkloadCreator,
@@ -52,7 +56,7 @@ impl Game {
     pub fn new(ctx: &mut Context) -> tetra::Result<Self> {
         let mut world = World::new();
 
-        world.add_unique(map::HexMap::new(200, 200));
+        world.add_unique(map::HexMap::new(WIDTH, HEIGHT));
         world.add_unique((*ctx.input_context()).clone());
 
         world

@@ -69,13 +69,47 @@ impl HexMap {
             }
         }
 
+        let position = Vec2::new(
+            (((height - 1) / 2) + width) as f32 / -2., 
+            height as f32 / -2.,
+        );
+        
+
+        println!("{:?}", position);
+
         HexMap {
             tiles,
             width,
             height,
-            position: Vec2::new(-(width as f32) / 2.0, -(height as f32) / 2.0),
+            position,
             tallest,
         }
+    }
+
+    pub fn pixel_to_hex_raw(&mut self, pos: Vec2<f32>, height_offset: f32) -> (f32, f32) {
+        let mut pos = pos;
+        pos -= Vec2::new(18., 18.);
+        pos.x -= self.position.x * FLOOR_WIDTH;
+        pos.y -= self.position.y * FLOOR_VERT_STEP;
+        pos.y += height_offset;
+
+        let size_x = FLOOR_WIDTH / f32::sqrt(3.0);
+        // See axial_to_pixel for comment on why this value
+        let size_y = 18.66666666666666666;
+
+        let pos = Vec2::new(
+            pos.x / size_x,
+            pos.y / size_y,
+        );
+
+        let b0 = f32::sqrt(3.0) / 3.0;
+        let b1 = -1.0 / 3.0;
+        let b2 = 0.0;
+        let b3 = 2.0 / 3.0;
+
+        let q: f32 = b0 * pos.x + b1 * pos.y;
+        let r: f32 = b2 * pos.x + b3 * pos.y;
+        (q, r)
     }
 
     /// Returns a hex in offset coords
@@ -85,35 +119,12 @@ impl HexMap {
         for height in 0..=self.tallest {
             let height_offset = height as f32 * FLOOR_DEPTH_STEP;
 
-            let mut pos = pos;
-            pos -= Vec2::new(18., 18.);
-            pos.x -= self.position.x * FLOOR_WIDTH;
-            pos.y -= self.position.y * FLOOR_VERT_STEP;
-            pos.y += height_offset;
-    
-            let size_x = FLOOR_WIDTH / f32::sqrt(3.0);
-            // See axial_to_pixel for comment on why this value
-            let size_y = 18.66666666666666666;
-    
-            let pos = Vec2::new(
-                pos.x / size_x,
-                pos.y / size_y,
-            );
-    
-            let b0 = f32::sqrt(3.0) / 3.0;
-            let b1 = -1.0 / 3.0;
-            let b2 = 0.0;
-            let b3 = 2.0 / 3.0;
-    
-            let q: f32 = b0 * pos.x + b1 * pos.y;
-            let r: f32 = b2 * pos.x + b3 * pos.y;
+            let (q, r) = self.pixel_to_hex_raw(pos.clone(), height_offset);
 
             let (q, r, s) = (q, r, -r -q);
 
-            let (q, r, _) = cube_round(q, r, s);
+            let (x, y, _) = cube_round(q, r, s);
     
-            let (x, y) = cube_to_offset(q, r);
-
             if x < 0 || x >= self.width as i32 || y < 0 || y >= self.height as i32 {
                 continue;
             }
@@ -135,8 +146,9 @@ impl HexMap {
         None
     }
 
-    #[allow(dead_code)]
-    pub fn axial_to_pixel(&mut self, q: f32, r: f32) -> (f32, f32) {
+    pub fn axial_to_pixel(&mut self, q: i32, r: i32) -> (f32, f32) {
+        let (q, r) = (q as f32, r as f32);
+
         let size_x = FLOOR_WIDTH / f32::sqrt(3.0);
         // this value is derived by solving for X in:
         // FLOOR_VERT_STEP * R = X * (3.0 / 2.0 * R) 
@@ -147,19 +159,21 @@ impl HexMap {
 
         let x = size_x * (f32::sqrt(3.0) * q + f32::sqrt(3.0) / 2.0 * r);
         let y = size_y * (3.0 / 2.0 * r);
-        (x + 18. + (self.position.x * FLOOR_WIDTH), y + 18. + (self.position.y * FLOOR_VERT_STEP))
+        (
+            x + 18. + self.position.x * FLOOR_WIDTH,
+            y + 18. + self.position.y * FLOOR_VERT_STEP,
+        )
     }
 }
 
-fn cube_to_offset(q: i32, r: i32) -> (i32, i32) {
+pub fn cube_to_offset(q: i32, r: i32) -> (i32, i32) {
     let col = q + (r - (r & 1)) / 2;
     let row = r;
 
     (col, row)
 }
 
-#[allow(dead_code)]
-fn offset_to_cube(off_x: i32, off_y: i32) -> (i32, i32, i32) {
+pub fn offset_to_cube(off_x: i32, off_y: i32) -> (i32, i32, i32) {
     let x = off_x - (off_y - (off_y as i32 & 1)) / 2;
     let z = off_y;
     let y = -x-z;
@@ -194,12 +208,16 @@ pub fn render_hex_map(input_ctx: UniqueView<InputContext>, drawables: NonSendSyn
     let mouse_pos = camera.mouse_position(&input_ctx);
     let selected_hex = map.pixel_to_hex(mouse_pos);
 
-    let camera_pos: Vec2<f32> = camera.position / Vec2::new(FLOOR_WIDTH, FLOOR_VERT_STEP) - map.position;
+    let (q, r) = map.pixel_to_hex_raw(camera.position, 0.);
 
-    let startx = (camera_pos.x - 20.0).max(0.0).min(map.width as f32 - 1.0) as usize;
-    let endx = (camera_pos.x + 20.0).max(0.0).min(map.width as f32 - 1.0) as usize;
-    let starty = (camera_pos.y - 20.0).max(0.0).min(map.height as f32 - 1.0) as usize;
-    let endy = (camera_pos.y + 20.0).max(0.0).min(map.height as f32 - 1.0) as usize;
+    let startx = (q - 40.0)
+        .max(0.0).min(map.width as f32 - 1.0) as usize;
+    let endx = (q + 40.0)
+        .max(0.0).min(map.width as f32 - 1.0) as usize;
+    let starty = (r - 20.0)
+        .max(0.0).min(map.height as f32 - 1.0) as usize;
+    let endy = (r + 20.0)
+        .max(0.0).min(map.height as f32 - 1.0) as usize;
 
     let (top_tex, wall_tex, brick_tex, brick_floor_tex) = (drawables.alias[textures::FLOOR], drawables.alias[textures::WALL], drawables.alias[textures::WALL_BRICK], drawables.alias[textures::FLOOR_BRICK]);
 
@@ -215,15 +233,15 @@ pub fn render_hex_map(input_ctx: UniqueView<InputContext>, drawables: NonSendSyn
                     continue;
                 }
 
-                let (draw_x, draw_y) =
+                let (draw_x, draw_y) = {
+                    let offset_x = (FLOOR_WIDTH / 2.0) * y as f32;
+                    let mut x = FLOOR_WIDTH * x as f32;
+                    x += offset_x;
                     (
-                        if y % 2 == 1 {
-                            (x as i32) as f32 * FLOOR_WIDTH + (FLOOR_WIDTH / 2.0)
-                        } else {
-                            (x as i32) as f32 * FLOOR_WIDTH
-                        },
+                        x,
                         (y as i32) as f32 * (FLOOR_VERT_STEP)
-                    );
+                    )
+                };
                 let (draw_x, draw_y) =
                     (
                         draw_x + map.position.x * FLOOR_WIDTH,
@@ -263,11 +281,10 @@ pub fn render_hex_map(input_ctx: UniqueView<InputContext>, drawables: NonSendSyn
     }
     
     // Draw dots at hex centers
-    /*let marker_tex = drawables.alias[textures::MARKER];
+    let marker_tex = drawables.alias[textures::MARKER];
     for y_tile in starty..=endy {
         for x_tile in startx..=endx {
-            let (q, _, s) = offset_to_cube(x_tile as i32, y_tile as i32);
-            let (x, y) = map.axial_to_pixel(q as f32, s as f32);
+            let (x, y) = map.axial_to_pixel(x_tile as i32, y_tile as i32);
             let tile = &map.tiles[map.width * y_tile + x_tile];
 
             draw_buffer.draw(
@@ -278,7 +295,7 @@ pub fn render_hex_map(input_ctx: UniqueView<InputContext>, drawables: NonSendSyn
                     .draw_iso(true)
             );
         }
-    }*/
+    }
 
     draw_buffer.end_command_pool();
 }
