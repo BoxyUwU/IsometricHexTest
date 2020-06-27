@@ -24,7 +24,6 @@ use vermarine_lib::{
         ContextBuilder,
         State,
         Context,
-        Trans,
         graphics::{
             self,
             Color,
@@ -39,13 +38,11 @@ use vermarine_lib::{
     },
 };
 
-type Res = ();
-
 fn main() -> tetra::Result {
     ContextBuilder::new("Hexes", 1280, 720)
         .show_mouse(true)
         .build()?
-        .run(Game::new, |_| Ok(()))
+        .run(Game::new)
 }
 
 pub struct Game {
@@ -71,8 +68,8 @@ impl Game {
     }
 }
 
-impl State<Res> for Game {
-    fn update(&mut self, ctx: &mut Context, _res: &mut Res) -> tetra::Result<Trans<Res>> {
+impl State for Game {
+    fn update(&mut self, ctx: &mut Context) -> tetra::Result {
         let input_ctx = ctx.input_context();
         self.world.run(|mut ctx: UniqueViewMut<InputContext>| {
             *ctx = (*input_ctx).clone();
@@ -81,10 +78,10 @@ impl State<Res> for Game {
         self.world.run(systems::move_camera);
         self.world.run(systems::update_hex_map);
 
-        Ok(Trans::None)
+        Ok(())
     }
 
-    fn draw(&mut self, ctx: &mut Context, _res: &mut Res) -> tetra::Result {
+    fn draw(&mut self, ctx: &mut Context) -> tetra::Result {
         graphics::clear(ctx, Color::rgb(0.392, 0.584, 0.929));
 
         self.world.run_workload("Rendering");
