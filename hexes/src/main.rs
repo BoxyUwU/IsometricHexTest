@@ -15,6 +15,7 @@ use vermarine_lib::{
     rendering::{
         RenderingWorkloadCreator,
         RenderingWorkloadSystems,
+        Drawables,
         draw_buffer::{
             DrawBuffer,
         },
@@ -25,6 +26,7 @@ use vermarine_lib::{
         State,
         Context,
         graphics::{
+            Camera,
             self,
             Color,
         },
@@ -55,6 +57,7 @@ impl Game {
 
         world.add_unique(map::HexMap::new(WIDTH, HEIGHT));
         world.add_unique((*ctx.input_context()).clone());
+        world.add_unique_non_send_sync(Drawables::new(ctx).unwrap());
 
         world
             .add_rendering_workload(ctx)
@@ -85,6 +88,10 @@ impl State for Game {
         graphics::clear(ctx, Color::rgb(0.392, 0.584, 0.929));
 
         self.world.run_workload("Rendering");
+        self.world.run(|mut camera: UniqueViewMut<Camera>, mut draw_buff: UniqueViewMut<DrawBuffer>| {
+            camera.update();
+            draw_buff.transform_mat = camera.as_matrix();
+        });
         self.world.run_with_data(DrawBuffer::flush, ctx);
 
         Ok(())
