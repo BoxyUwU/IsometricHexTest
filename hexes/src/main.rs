@@ -3,10 +3,6 @@ mod systems;
 mod consts;
 mod map;
 
-use map::{
-    render_hex_map,
-};
-
 use consts::{
     *,
 };
@@ -55,14 +51,34 @@ impl Game {
     pub fn new(ctx: &mut Context) -> tetra::Result<Self> {
         let mut world = World::new();
 
-        world.add_unique(map::HexMap::new(WIDTH, HEIGHT));
+        let hex_width = 36.;
+        let hex_height = 36.;
+        let hex_vert_step = 28.;
+        let hex_depth_step = 12.;
+
+        let wall_vert_offset = 12.;
+        let wall_vert_step = 12.;
+
+        world.add_unique(map::HexMap::new(
+            WIDTH, HEIGHT,
+            
+            hex_width,
+            hex_height,
+            hex_vert_step,
+            hex_depth_step,
+
+            wall_vert_offset,
+            wall_vert_step,
+
+            MAX_FLOOR_HEIGHT,
+        ));
         world.add_unique((*ctx.input_context()).clone());
         world.add_unique_non_send_sync(Drawables::new(ctx).unwrap());
 
         world
             .add_rendering_workload(ctx)
             .with_rendering_systems()
-            .with_system(system!(render_hex_map))
+            .with_system(system!(systems::render_hex_map))
             .build();
 
         Ok(Game {
