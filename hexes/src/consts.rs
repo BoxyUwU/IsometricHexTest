@@ -16,5 +16,5 @@ pub const CAM_SPEED: f32 = 5.0;
 pub const MAX_FLOOR_HEIGHT: u8 = 2;
 pub const MAX_BRICK_HEIGHT: u8 = 4;
 
-pub const WIDTH: usize = 40;
-pub const HEIGHT: usize = 40;
+pub const WIDTH: usize = 2;
+pub const HEIGHT: usize = 2;

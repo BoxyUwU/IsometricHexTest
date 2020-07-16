@@ -7,6 +7,10 @@ use consts::{
     *,
 };
 
+use rand::SeedableRng;
+use rand::Rng;
+use rand::rngs::StdRng;
+
 use vermarine_lib::{
     rendering::{
         RenderingWorkloadCreator,
@@ -34,6 +38,12 @@ use vermarine_lib::{
         self,
         *,
     },
+    hexmap::{
+        HexTileData,
+        CHUNK_WIDTH,
+        CHUNK_HEIGHT,
+        HexChunk,
+    },
 };
 
 fn main() -> tetra::Result {
@@ -59,9 +69,7 @@ impl Game {
         let wall_vert_offset = 12.;
         let wall_vert_step = 12.;
 
-        world.add_unique(map::HexMap::new(
-            WIDTH, HEIGHT,
-            
+        let mut map = map::HexMap::new(            
             hex_width,
             hex_height,
             hex_vert_step,
@@ -69,9 +77,34 @@ impl Game {
 
             wall_vert_offset,
             wall_vert_step,
+        );
 
-            MAX_FLOOR_HEIGHT,
-        ));
+        let mut rand = StdRng::seed_from_u64(100);
+        let mut chunks = vec![];
+        let mut tallest = 0;
+        for q in 0..WIDTH {
+            for r in 0..HEIGHT {
+                let mut tiles = [HexTileData::new(0); CHUNK_WIDTH * CHUNK_HEIGHT];
+
+                for i in 0..(CHUNK_WIDTH * CHUNK_HEIGHT) {
+                    let value = rand.gen_range(0, MAX_FLOOR_HEIGHT as u16 + 1) as u8;
+                    tiles[i] = HexTileData::new(value);
+                    if value > tallest {
+                        tallest = value;
+                    }
+                }
+
+                chunks.push(HexChunk::new(tiles, q as i32 -1, r as i32 -1));
+            }
+        }
+
+        map.tallest = tallest;
+        for chunk in chunks.into_iter() {
+            map.insert_chunk(chunk);
+        }
+
+        world.add_unique(map);
+
         world.add_unique((*ctx.input_context()).clone());
         world.add_unique_non_send_sync(Drawables::new(ctx).unwrap());
 

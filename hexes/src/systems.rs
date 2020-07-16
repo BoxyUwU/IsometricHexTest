@@ -61,17 +61,14 @@ pub fn move_camera(mut camera: UniqueViewMut<Camera>, input: UniqueView<InputCon
 }
 
 pub fn update_hex_map(input_ctx: UniqueView<InputContext>, mut map: UniqueViewMut<HexMap>, camera: UniqueView<Camera>) {
-    use vermarine_lib::hexmap::Axial;
-    let Axial { q, r } = 
+    let axial = 
         if let Some(hex) = map.pixel_to_hex(camera.mouse_position(&input_ctx)) {
             hex
         } else {
             return;
         };
-    let (q, r) = (q as usize, r as usize);
     
-    let map_width = map.width;
-    let tile = map.get_tile_at_index_mut(r * map_width + q);
+    let tile = map.get_tile_mut(&axial.to_hex());
 
     if input::is_mouse_button_pressed(&input_ctx, MouseButton::Left) {
         if tile.ground_height > tile.wall_height && tile.ground_height > 0 {
@@ -115,14 +112,10 @@ pub fn render_hex_map(
     use vermarine_lib::hexmap::FractionalAxial;
     let FractionalAxial { q, r }  = map.pixel_to_hex_raw(camera.position, 0.);
 
-    let startq = (q - 40.0)
-        .max(0.0).min(map.width as f32 - 1.0) as usize;
-    let endq = (q + 40.0)
-        .max(0.0).min(map.width as f32 - 1.0) as usize;
-    let startr = (r - 20.0)
-        .max(0.0).min(map.height as f32 - 1.0) as usize;
-    let endr = (r + 20.0)
-        .max(0.0).min(map.height as f32 - 1.0) as usize;
+    let startq = (q - 40.0) as i32;
+    let endq = (q + 40.0) as i32;
+    let startr = (r - 20.0) as i32;
+    let endr = (r + 20.0) as i32;
 
     let (top_tex, wall_tex, brick_tex, brick_floor_tex) = 
         (
@@ -139,7 +132,15 @@ pub fn render_hex_map(
         let mut top_brick_buffer: Vec<DrawCommand> = Vec::with_capacity(1024);
         for r in startr..=endr {
             for q in startq..=endq {
-                let tile = map.get_tile_at_index(map.width * r + q);
+                use vermarine_lib::hexmap::Axial;
+                let axial = Axial::new(q as i32, r as i32);
+
+                let tile = if let Some(tile) = map.try_get_tile(&axial.to_hex()) {
+                    tile
+                } else {
+                    continue;
+                };
+
                 if tile.wall_height < height {
                     continue;
                 }
@@ -162,7 +163,7 @@ pub fn render_hex_map(
                 }
 
                 let color = if let Some(axial) = selected_hex {
-                    let color = if q == axial.q as usize && r == axial.r as usize {
+                    let color = if q == axial.q && r == axial.r {
                         Color::RED
                     } else {
                         Color::WHITE
@@ -187,12 +188,18 @@ pub fn render_hex_map(
     }
     
     // Draw dots at hex centers
-    let marker_tex = drawables.alias[textures::MARKER];
+    /*let marker_tex = drawables.alias[textures::MARKER];
     for r_tile in startr..=endr {
         for q_tile in startq..=endq {
             use vermarine_lib::hexmap::Axial;
-            let (x, y) = map.axial_to_pixel(Axial::new(q_tile as i32, r_tile as i32));
-            let tile = map.get_tile_at_index(map.width * r_tile + q_tile);
+            let axial = Axial::new(q_tile as i32, r_tile as i32);
+            let (x, y) = map.axial_to_pixel(axial);
+            
+            let tile = if let Some(tile) = map.try_get_tile(&axial.to_hex()) {
+                tile
+            } else {
+                continue;
+            };
 
             draw_buffer.draw(
                 DrawCommand::new(marker_tex)
@@ -202,7 +209,7 @@ pub fn render_hex_map(
                     .draw_iso(true)
             );
         }
-    }
+    }*/
 
     draw_buffer.end_command_pool();
 }
