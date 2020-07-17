@@ -11,6 +11,10 @@ use rand::SeedableRng;
 use rand::Rng;
 use rand::rngs::StdRng;
 
+use map::{
+    HexTileData,
+};
+
 use vermarine_lib::{
     rendering::{
         RenderingWorkloadCreator,
@@ -39,10 +43,10 @@ use vermarine_lib::{
         *,
     },
     hexmap::{
-        HexTileData,
         CHUNK_WIDTH,
         CHUNK_HEIGHT,
         HexChunk,
+        HexMap,
     },
 };
 
@@ -69,7 +73,7 @@ impl Game {
         let wall_vert_offset = 12.;
         let wall_vert_step = 12.;
 
-        let mut map = map::HexMap::new(            
+        let mut map = HexMap::<HexTileData>::new(            
             hex_width,
             hex_height,
             hex_vert_step,
@@ -79,7 +83,8 @@ impl Game {
             wall_vert_step,
         );
 
-        let mut rand = StdRng::seed_from_u64(100);
+        let mut rand = StdRng::from_entropy();
+        //let mut rand = StdRng::seed_from_u64(100);
         let mut chunks = vec![];
         let mut tallest = 0;
         for q in 0..WIDTH {

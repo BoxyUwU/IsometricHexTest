@@ -22,7 +22,7 @@ use crate::{
         *,
     },
     map::{
-        HexMap,
+        HexTileData,
     },
 };
 
@@ -33,6 +33,9 @@ use vermarine_lib::{
             DrawCommand,
             DrawBuffer,
         },
+    },
+    hexmap::{
+        HexMap,
     },
 };
 
@@ -60,7 +63,7 @@ pub fn move_camera(mut camera: UniqueViewMut<Camera>, input: UniqueView<InputCon
     }
 }
 
-pub fn update_hex_map(input_ctx: UniqueView<InputContext>, mut map: UniqueViewMut<HexMap>, camera: UniqueView<Camera>) {
+pub fn update_hex_map(input_ctx: UniqueView<InputContext>, mut map: UniqueViewMut<HexMap<HexTileData>>, camera: UniqueView<Camera>) {
     let axial = 
         if let Some(hex) = map.pixel_to_hex(camera.mouse_position(&input_ctx)) {
             hex
@@ -100,7 +103,7 @@ pub fn render_hex_map(
     input_ctx: UniqueView<InputContext>, 
     drawables: NonSendSync<UniqueViewMut<Drawables>>, 
     mut draw_buffer: UniqueViewMut<DrawBuffer>, 
-    mut map: UniqueViewMut<HexMap>, 
+    mut map: UniqueViewMut<HexMap<HexTileData>>, 
     camera: UniqueView<Camera>
 ) {
     draw_buffer.new_command_pool(true);
@@ -214,7 +217,7 @@ pub fn render_hex_map(
     draw_buffer.end_command_pool();
 }
 
-pub fn render_hex_top(map: &HexMap, draw_buffer: &mut Vec<DrawCommand>, x: f32, y: f32, height: u8, texture: u64, color: Color) {
+pub fn render_hex_top(map: &HexMap<HexTileData>, draw_buffer: &mut Vec<DrawCommand>, x: f32, y: f32, height: u8, texture: u64, color: Color) {
     let mut draw_command = create_floor_draw_cmd(x, y, height as f32 * map.hex_depth_step, height, texture); 
     if color != Color::WHITE {
         draw_command = draw_command.color(color);
@@ -242,7 +245,7 @@ fn create_floor_draw_cmd(x: f32, y: f32, height: f32, color: u8, texture: u64) -
         .color(color)
 }
 
-pub fn render_hex_brick_top(map: &HexMap, draw_buffer: &mut Vec<DrawCommand>, x: f32, y: f32, height: u8, texture: u64, color: Color) {
+pub fn render_hex_brick_top(map: &HexMap<HexTileData>, draw_buffer: &mut Vec<DrawCommand>, x: f32, y: f32, height: u8, texture: u64, color: Color) {
     let mut draw_command = create_brick_floor_draw_cmd(x, y, height as f32 * map.hex_depth_step, height, texture); 
     if color != Color::WHITE {
         draw_command = draw_command.color(color);
@@ -273,7 +276,7 @@ fn create_brick_floor_draw_cmd(x: f32, y: f32, height: f32, color: u8, texture: 
         .color(color)
 }
 
-pub fn render_hex_walls(map: &HexMap, draw_buffer: &mut Vec<DrawCommand>, x: f32, y: f32, height: u8, wall_tex: u64) {
+pub fn render_hex_walls(map: &HexMap<HexTileData>, draw_buffer: &mut Vec<DrawCommand>, x: f32, y: f32, height: u8, wall_tex: u64) {
     let start_height = height as f32 * map.hex_depth_step - map.wall_vert_offset;
     let color = 
         if height % 2 == 1 {
@@ -306,7 +309,7 @@ fn create_wall_draw_cmd(x: f32, y: f32, height: f32, color: u8, texture: u64) ->
         .color(color)
 }
 
-pub fn render_hex_bricks(map: &HexMap, draw_buffer: &mut Vec<DrawCommand>, x: f32, y: f32, height: u8, brick_tex: u64) {
+pub fn render_hex_bricks(map: &HexMap<HexTileData>, draw_buffer: &mut Vec<DrawCommand>, x: f32, y: f32, height: u8, brick_tex: u64) {
     let start_height = height as f32 * map.hex_depth_step - map.wall_vert_step;
     draw_buffer.push(
         create_wall_brick_draw_cmd(x, y, start_height, height, brick_tex)
