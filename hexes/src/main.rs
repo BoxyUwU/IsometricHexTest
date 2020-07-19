@@ -3,16 +3,8 @@ mod systems;
 mod consts;
 mod map;
 
-use consts::{
-    *,
-};
-
-use rand::SeedableRng;
-use rand::Rng;
-use rand::rngs::StdRng;
-
 use map::{
-    HexTileData,
+    Map,
 };
 
 use vermarine_lib::{
@@ -42,12 +34,6 @@ use vermarine_lib::{
         self,
         *,
     },
-    hexmap::{
-        CHUNK_WIDTH,
-        CHUNK_HEIGHT,
-        HexChunk,
-        HexMap,
-    },
 };
 
 fn main() -> tetra::Result {
@@ -65,51 +51,7 @@ impl Game {
     pub fn new(ctx: &mut Context) -> tetra::Result<Self> {
         let mut world = World::new();
 
-        let hex_width = 36.;
-        let hex_height = 36.;
-        let hex_vert_step = 28.;
-        let hex_depth_step = 12.;
-
-        let wall_vert_offset = 12.;
-        let wall_vert_step = 12.;
-
-        let mut map = HexMap::<HexTileData>::new(            
-            hex_width,
-            hex_height,
-            hex_vert_step,
-            hex_depth_step,
-
-            wall_vert_offset,
-            wall_vert_step,
-        );
-
-        let mut rand = StdRng::from_entropy();
-        //let mut rand = StdRng::seed_from_u64(100);
-        let mut chunks = vec![];
-        let mut tallest = 0;
-        for q in 0..WIDTH {
-            for r in 0..HEIGHT {
-                let mut tiles = [HexTileData::new(0); CHUNK_WIDTH * CHUNK_HEIGHT];
-
-                for tile in tiles.iter_mut() {
-                    let value = rand.gen_range(0, MAX_FLOOR_HEIGHT as u16 + 1) as u8;
-                    *tile = HexTileData::new(value);
-                    if value > tallest {
-                        tallest = value;
-                    }
-                }
-
-                chunks.push(HexChunk::new(tiles, q as i32 -1, r as i32 -1));
-            }
-        }
-
-        map.tallest = tallest;
-        for chunk in chunks.into_iter() {
-            map.insert_chunk(chunk);
-        }
-
-        world.add_unique(map);
-
+        world.add_unique(Map::new());
         world.add_unique((*ctx.input_context()).clone());
         world.add_unique_non_send_sync(Drawables::new(ctx).unwrap());
 

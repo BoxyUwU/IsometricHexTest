@@ -7,6 +7,7 @@ use crate::{
         graphics::{
             Camera,
             Color,
+            Rectangle,
         },
         input::{
             self,
@@ -23,6 +24,8 @@ use crate::{
     },
     map::{
         HexTileData,
+        HexPathNode,
+        Map,
     },
 };
 
@@ -36,6 +39,7 @@ use vermarine_lib::{
     },
     hexmap::{
         HexMap,
+        Axial,
     },
 };
 
@@ -63,15 +67,15 @@ pub fn move_camera(mut camera: UniqueViewMut<Camera>, input: UniqueView<InputCon
     }
 }
 
-pub fn update_hex_map(input_ctx: UniqueView<InputContext>, mut map: UniqueViewMut<HexMap<HexTileData>>, camera: UniqueView<Camera>) {
+pub fn update_hex_map(input_ctx: UniqueView<InputContext>, mut map: UniqueViewMut<Map>, camera: UniqueView<Camera>) {
     let axial = 
-        if let Some(hex) = map.pixel_to_hex(camera.mouse_position(&input_ctx)) {
+        if let Some(hex) = map.terrain.pixel_to_hex(camera.mouse_position(&input_ctx)) {
             hex
         } else {
             return;
         };
     
-    let tile = map.get_tile_mut(&axial.to_hex());
+    let tile = map.terrain.get_tile_mut(&axial.to_hex()).unwrap();
 
     if input::is_mouse_button_pressed(&input_ctx, MouseButton::Left) {
         if tile.ground_height > tile.wall_height && tile.ground_height > 0 {
@@ -94,8 +98,8 @@ pub fn update_hex_map(input_ctx: UniqueView<InputContext>, mut map: UniqueViewMu
     }
 
     let height = tile.wall_height;
-    if height > map.tallest {
-        map.tallest = height;
+    if height > map.terrain.tallest {
+        map.terrain.tallest = height;
     }
 }
 
@@ -103,17 +107,17 @@ pub fn render_hex_map(
     input_ctx: UniqueView<InputContext>, 
     drawables: NonSendSync<UniqueViewMut<Drawables>>, 
     mut draw_buffer: UniqueViewMut<DrawBuffer>, 
-    mut map: UniqueViewMut<HexMap<HexTileData>>, 
+    mut map: UniqueViewMut<Map>, 
     camera: UniqueView<Camera>
 ) {
     draw_buffer.new_command_pool(true);
     let command_pool = draw_buffer.get_command_pool();
 
     let mouse_pos = camera.mouse_position(&input_ctx);
-    let selected_hex = map.pixel_to_hex(mouse_pos);
+    let selected_hex = map.terrain.pixel_to_hex(mouse_pos);
 
     use vermarine_lib::hexmap::FractionalAxial;
-    let FractionalAxial { q, r }  = map.pixel_to_hex_raw(camera.position, 0.);
+    let FractionalAxial { q, r }  = map.terrain.pixel_to_hex_raw(camera.position, 0.);
 
     let startq = (q - 40.0) as i32;
     let endq = (q + 40.0) as i32;
@@ -128,17 +132,16 @@ pub fn render_hex_map(
             drawables.alias[textures::FLOOR_BRICK]
         );
 
-    for height in 0..=map.tallest {
+    for height in 0..=map.terrain.tallest {
         let mut wall_buffer: Vec<DrawCommand> = Vec::with_capacity(1024);
         let mut wall_brick_buffer: Vec<DrawCommand> = Vec::with_capacity(1024);
         let mut top_buffer: Vec<DrawCommand> = Vec::with_capacity(1024);
         let mut top_brick_buffer: Vec<DrawCommand> = Vec::with_capacity(1024);
         for r in startr..=endr {
             for q in startq..=endq {
-                use vermarine_lib::hexmap::Axial;
                 let axial = Axial::new(q as i32, r as i32);
 
-                let tile = if let Some(tile) = map.try_get_tile(&axial.to_hex()) {
+                let tile = if let Some(tile) = map.terrain.get_tile(&axial.to_hex()) {
                     tile
                 } else {
                     continue;
@@ -149,20 +152,20 @@ pub fn render_hex_map(
                 }
 
                 let (draw_x, draw_y) = {
-                    let offset_x = (map.hex_width / 2.0) * r as f32;
-                    let mut x = map.hex_width * q as f32;
+                    let offset_x = (map.terrain.hex_width / 2.0) * r as f32;
+                    let mut x = map.terrain.hex_width * q as f32;
                     x += offset_x;
                     (
-                        x + map.position.x,
-                        ((r as i32) as f32 * (map.hex_vert_step)) + map.position.y
+                        x + map.terrain.position.x,
+                        ((r as i32) as f32 * (map.terrain.hex_vert_step)) + map.terrain.position.y
                     )
                 };
                 
                 if height <= tile.ground_height && height != 0 {
-                    render_hex_walls(&map, &mut wall_buffer, draw_x, draw_y, height, wall_tex);
+                    render_hex_walls(&map.terrain, &mut wall_buffer, draw_x, draw_y, height, wall_tex);
                 }
                 if height > tile.ground_height && height <= tile.wall_height {
-                    render_hex_bricks(&map, &mut wall_brick_buffer, draw_x, draw_y, height, brick_tex);
+                    render_hex_bricks(&map.terrain, &mut wall_brick_buffer, draw_x, draw_y, height, brick_tex);
                 }
 
                 let color = if let Some(axial) = selected_hex {
@@ -176,10 +179,10 @@ pub fn render_hex_map(
                 };
 
                 if height == tile.ground_height && height == tile.wall_height {
-                    render_hex_top(&map, &mut top_buffer, draw_x, draw_y, tile.ground_height, top_tex, color);
+                    render_hex_top(&map.terrain, &mut top_buffer, draw_x, draw_y, tile.ground_height, top_tex, color);
                 }
                 if height == tile.wall_height && height != tile.ground_height {
-                    render_hex_brick_top(&map, &mut top_brick_buffer, draw_x, draw_y, tile.wall_height, brick_floor_tex, color);
+                    render_hex_brick_top(&map.terrain, &mut top_brick_buffer, draw_x, draw_y, tile.wall_height, brick_floor_tex, color);
                 }
             }
         }
@@ -190,28 +193,71 @@ pub fn render_hex_map(
     }
     
     // Draw dots at hex centers
-    /*let marker_tex = drawables.alias[textures::MARKER];
-    for r_tile in startr..=endr {
-        for q_tile in startq..=endq {
-            use vermarine_lib::hexmap::Axial;
-            let axial = Axial::new(q_tile as i32, r_tile as i32);
-            let (x, y) = map.axial_to_pixel(axial);
-            
-            let tile = if let Some(tile) = map.try_get_tile(&axial.to_hex()) {
-                tile
-            } else {
-                continue;
-            };
-
-            draw_buffer.draw(
-                DrawCommand::new(marker_tex)
-                    .position(Vec3::new(
-                        x - 2.0, y - 2.0, tile.wall_height as f32 * map.hex_depth_step 
-                    ))
-                    .draw_iso(true)
-            );
+    if DRAW_DOTS {
+        let marker_tex = drawables.alias[textures::MARKER];
+        for r_tile in startr..=endr {
+            for q_tile in startq..=endq {
+                let axial = Axial::new(q_tile as i32, r_tile as i32);
+                let (x, y) = map.terrain.axial_to_pixel(axial);
+                
+                let tile = if let Some(tile) = map.terrain.get_tile(&axial.to_hex()) {
+                    tile
+                } else {
+                    continue;
+                };
+    
+                draw_buffer.draw(
+                    DrawCommand::new(marker_tex)
+                        .position(Vec3::new(
+                            x - 2.0, y - 2.0, tile.wall_height as f32 * map.terrain.hex_depth_step 
+                        ))
+                        .draw_iso(true)
+                );
+            }
         }
-    }*/
+    }
+
+    if DRAW_FLOW {
+        let arrow_sheet = drawables.alias[textures::ARROW_SHEET];
+        for r_tile in startr..=endr {
+            for q_tile in startq..=endq {
+                let axial = Axial::new(q_tile as i32, r_tile as i32);
+                let (x, y) = map.terrain.axial_to_pixel(axial);
+
+                let terrain_tile = if let Some(tile) = map.terrain.get_tile(&axial.to_hex()) {
+                    tile
+                } else {
+                    continue;
+                };
+    
+                let flow_tile = if let Some(tile) = map.dijkstra.get_tile(&axial.to_hex()) {
+                    tile
+                } else {
+                    continue;
+                };
+
+                draw_buffer.draw(
+                    DrawCommand::new(arrow_sheet)
+                        .position(Vec3::new(
+                            x, y, terrain_tile.wall_height as f32 * map.terrain.hex_depth_step 
+                        ))
+                        .origin(Vec2::new(18., 18.))
+                        .draw_iso(true)
+                        .clip(
+                            match flow_tile {
+                                HexPathNode::TopLeft => Rectangle::row(0., 0., 36., 36.).next().unwrap(),
+                                HexPathNode::TopRight => Rectangle::row(0., 0., 36., 36.).nth(1).unwrap(),
+                                HexPathNode::BottomRight => Rectangle::row(0., 0., 36., 36.).nth(2).unwrap(), 
+                                HexPathNode::BottomLeft => Rectangle::row(0., 0., 36., 36.).nth(3).unwrap(), 
+                                HexPathNode::Right => Rectangle::row(0., 0., 36., 36.).nth(4).unwrap(), 
+                                HexPathNode::Left => Rectangle::row(0., 0., 36., 36.).nth(5).unwrap(),
+                                _ => continue,
+                            }
+                        )
+                );
+            }
+        }
+    }
 
     draw_buffer.end_command_pool();
 }

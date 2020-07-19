@@ -4,6 +4,7 @@ pub mod textures {
     pub const WALL: &str = "hex-dirt";
     pub const WALL_BRICK: &str = "hex-stone";
     pub const MARKER: &str = "marker";
+    pub const ARROW_SHEET: &str = "arrows";
 }
 
 pub mod draw_layers {
@@ -18,3 +19,6 @@ pub const MAX_BRICK_HEIGHT: u8 = 4;
 
 pub const WIDTH: usize = 2;
 pub const HEIGHT: usize = 2;
+
+pub const DRAW_DOTS: bool = true;
+pub const DRAW_FLOW: bool = true;
