@@ -91,9 +91,9 @@ impl Game {
             for r in 0..HEIGHT {
                 let mut tiles = [HexTileData::new(0); CHUNK_WIDTH * CHUNK_HEIGHT];
 
-                for i in 0..(CHUNK_WIDTH * CHUNK_HEIGHT) {
+                for tile in tiles.iter_mut() {
                     let value = rand.gen_range(0, MAX_FLOOR_HEIGHT as u16 + 1) as u8;
-                    tiles[i] = HexTileData::new(value);
+                    *tile = HexTileData::new(value);
                     if value > tallest {
                         tallest = value;
                     }

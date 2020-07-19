@@ -166,12 +166,11 @@ pub fn render_hex_map(
                 }
 
                 let color = if let Some(axial) = selected_hex {
-                    let color = if q == axial.q && r == axial.r {
+                    if q == axial.q && r == axial.r {
                         Color::RED
                     } else {
                         Color::WHITE
-                    };
-                    color
+                    }
                 } else {
                     Color::WHITE
                 };

@@ -1,9 +1,9 @@
 pub mod textures {
-    pub const FLOOR: &'static str = "hex-grass";
-    pub const FLOOR_BRICK: &'static str = "hex-stone-floor";
-    pub const WALL: &'static str = "hex-dirt";
-    pub const WALL_BRICK: &'static str = "hex-stone";
-    pub const MARKER: &'static str = "marker";
+    pub const FLOOR: &str = "hex-grass";
+    pub const FLOOR_BRICK: &str = "hex-stone-floor";
+    pub const WALL: &str = "hex-dirt";
+    pub const WALL_BRICK: &str = "hex-stone";
+    pub const MARKER: &str = "marker";
 }
 
 pub mod draw_layers {
