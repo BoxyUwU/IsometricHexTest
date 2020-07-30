@@ -1,7 +1,13 @@
 mod systems;
-#[allow(dead_code)]
 mod consts;
 mod map;
+mod components;
+mod entity_creator;
+
+use components::{
+    Spawner,
+    Transform,
+};
 
 use map::{
     Map,
@@ -34,6 +40,9 @@ use vermarine_lib::{
         self,
         *,
     },
+    hexmap::{
+        Axial,
+    },
 };
 
 fn main() -> tetra::Result {
@@ -55,10 +64,16 @@ impl Game {
         world.add_unique((*ctx.input_context()).clone());
         world.add_unique_non_send_sync(Drawables::new(ctx).unwrap());
 
+        world.entity_builder()
+            .with(Spawner::new(120))
+            .with(Transform::new(Axial::new(-5, -7)))
+            .build();
+
         world
             .add_rendering_workload(ctx)
             .with_rendering_systems()
             .with_system(system!(systems::render_hex_map))
+            .with_system(system!(systems::draw_agent_paths))
             .build();
 
         Ok(Game {
@@ -76,6 +91,7 @@ impl State for Game {
 
         self.world.run(systems::move_camera);
         self.world.run(systems::update_hex_map);
+        self.world.run(systems::spawn_agents);
 
         Ok(())
     }

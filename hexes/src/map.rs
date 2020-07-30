@@ -13,6 +13,7 @@ use rand::rngs::StdRng;
 
 use crate::consts::*;
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum HexPathNode {
     TopLeft,
     TopRight,
@@ -38,8 +39,23 @@ impl HexPathNode {
             (0, 1) => HexPathNode::BottomRight,
             (-1, 1) => HexPathNode::BottomLeft,
             (-1, 0) => HexPathNode::Left,
+            (0, 0) => HexPathNode::Goal,
             _ => unreachable!(),
         }
+    }
+
+    pub fn to_hexes(&self) -> Hex {
+        let (q, r) = match self {
+            HexPathNode::TopLeft => (0, -1),
+            HexPathNode::TopRight => (1, -1),
+            HexPathNode::Right => (1, 0),
+            HexPathNode::BottomRight => (0, 1),
+            HexPathNode::BottomLeft => (-1, 1),
+            HexPathNode::Left => (-1, 0),
+            HexPathNode::Goal => (0, 0),
+        };
+
+        Axial::new(q, r).to_hex()
     }
 }
 
@@ -60,7 +76,8 @@ impl Map {
 
         let mut terrain = HexMap::<HexTileData>::new(hex_width, hex_height, hex_vert_step, hex_depth_step, wall_vert_offset, wall_vert_step);
 
-        let mut rand = StdRng::from_entropy();
+        let mut rand = StdRng::seed_from_u64(10);
+        //let mut rand = StdRng::from_entropy();
         let mut chunks = vec![];
         let mut tallest = 0;
         for q in 0..WIDTH {
@@ -92,6 +109,27 @@ impl Map {
         Map {
             terrain,
             dijkstra,
+        }
+    }
+
+    pub fn get_path(&self, start: Hex) -> Option<Vec<Hex>> {
+        let mut path = vec![];
+
+        self.dijkstra.get_tile(start)?;
+
+        let mut current_tile = start;
+        loop {
+            let path_node = *self.dijkstra.get_tile(current_tile).unwrap();
+            
+            if path_node == HexPathNode::Goal {
+                return Some(path);
+            }
+
+            let mut hex = path_node.to_hexes();
+            hex += current_tile;
+            
+            path.push(hex);
+            current_tile = hex;
         }
     }
 }
@@ -127,9 +165,9 @@ pub fn update_dijkstra_hexmap(terrain: &HexMap<HexTileData>, dijkstra: &mut HexM
                 .neighbors()
                 .iter()
                 .filter(|&&hex| {
-                    if terrain.get_tile(&hex).is_some() && dijkstra.get_tile(&hex).is_none() {
-                        let tile_height = terrain.get_tile(&tile).unwrap().get_height();
-                        let hex_height = terrain.get_tile(&hex).unwrap().get_height();
+                    if terrain.get_tile(hex).is_some() && dijkstra.get_tile(hex).is_none() {
+                        let tile_height = terrain.get_tile(tile).unwrap().get_height();
+                        let hex_height = terrain.get_tile(hex).unwrap().get_height();
                         
                         let (larger, smaller) = 
                             if hex_height > tile_height {

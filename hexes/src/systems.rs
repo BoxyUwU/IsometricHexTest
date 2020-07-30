@@ -27,6 +27,12 @@ use crate::{
         HexPathNode,
         Map,
     },
+    components::{
+        Agent,
+        Transform,
+        Spawner,
+    },
+    entity_creator,
 };
 
 use vermarine_lib::{
@@ -43,6 +49,78 @@ use vermarine_lib::{
     },
 };
 
+pub fn spawn_agents(mut all_storages: AllStoragesViewMut) {
+    let spawns = all_storages.run(|positions: View<Transform>, mut spawners: ViewMut<Spawner>| {
+        let mut spawns = vec![];
+
+        for (pos, spawner) in (&positions, &mut spawners).iter() {
+            spawner.counter -= 1;
+
+            if spawner.counter == 0 {
+                spawner.counter = spawner.period;
+
+                spawns.push(pos.position);
+            }
+        }
+
+        spawns
+    });
+    
+    for position in spawns {
+        entity_creator::create_agent(position, &mut all_storages);
+    }
+}
+
+pub fn draw_agent_paths(
+    drawables: NonSendSync<UniqueViewMut<Drawables>>, 
+    mut draw_buffer: UniqueViewMut<DrawBuffer>, 
+    map: UniqueView<Map>, 
+    agents: View<Agent>,
+    transforms: View<Transform>,
+) {
+    let arrow_sheet = drawables.alias[textures::ARROW_SHEET];
+    for (_, transform) in (&agents, &transforms).iter() {
+        if let Some(path) = map.get_path(transform.position.to_hex()) {
+            for step in path {
+                draw_arrow(&mut draw_buffer, arrow_sheet, &map, step.to_axial());
+            }
+        }
+    }
+}
+
+pub fn draw_arrow(draw_buffer: &mut DrawBuffer, arrow_sheet: u64, map: &Map, tile: Axial) {
+    let (x, y) = map.terrain.axial_to_pixel(tile);
+
+    let (terrain_tile, flow_tile) = 
+        if let (Some(terrain_tile), Some(flow_tile)) = (
+            map.terrain.get_tile(tile.to_hex()),
+            map.dijkstra.get_tile(tile.to_hex()),
+        ) {
+            (terrain_tile, flow_tile)
+        } else {
+            return;
+        };
+
+    draw_buffer.draw(
+        DrawCommand::new(arrow_sheet)
+            .position(Vec3::new(
+                x, y, terrain_tile.wall_height as f32 * map.terrain.hex_depth_step 
+            ))
+            .origin(Vec2::new(18., 18.))
+            .draw_iso(true)
+            .clip(
+                match flow_tile {
+                    HexPathNode::TopLeft => Rectangle::row(0., 0., 36., 36.).next().unwrap(),
+                    HexPathNode::TopRight => Rectangle::row(0., 0., 36., 36.).nth(1).unwrap(),
+                    HexPathNode::BottomRight => Rectangle::row(0., 0., 36., 36.).nth(2).unwrap(), 
+                    HexPathNode::BottomLeft => Rectangle::row(0., 0., 36., 36.).nth(3).unwrap(), 
+                    HexPathNode::Right => Rectangle::row(0., 0., 36., 36.).nth(4).unwrap(), 
+                    HexPathNode::Left => Rectangle::row(0., 0., 36., 36.).nth(5).unwrap(),
+                    _ => return,
+                }
+            )
+    );
+}
 
 pub fn move_camera(mut camera: UniqueViewMut<Camera>, input: UniqueView<InputContext>) {
     let mut movement: Vec2<f32> = Vec2::new(0.0, 0.0);
@@ -75,7 +153,7 @@ pub fn update_hex_map(input_ctx: UniqueView<InputContext>, mut map: UniqueViewMu
             return;
         };
     
-    let tile = map.terrain.get_tile_mut(&axial.to_hex()).unwrap();
+    let tile = map.terrain.get_tile_mut(axial.to_hex()).unwrap();
 
     if input::is_mouse_button_pressed(&input_ctx, MouseButton::Left) {
         if tile.ground_height > tile.wall_height && tile.ground_height > 0 {
@@ -141,7 +219,7 @@ pub fn render_hex_map(
             for q in startq..=endq {
                 let axial = Axial::new(q as i32, r as i32);
 
-                let tile = if let Some(tile) = map.terrain.get_tile(&axial.to_hex()) {
+                let tile = if let Some(tile) = map.terrain.get_tile(axial.to_hex()) {
                     tile
                 } else {
                     continue;
@@ -200,7 +278,7 @@ pub fn render_hex_map(
                 let axial = Axial::new(q_tile as i32, r_tile as i32);
                 let (x, y) = map.terrain.axial_to_pixel(axial);
                 
-                let tile = if let Some(tile) = map.terrain.get_tile(&axial.to_hex()) {
+                let tile = if let Some(tile) = map.terrain.get_tile(axial.to_hex()) {
                     tile
                 } else {
                     continue;
@@ -224,13 +302,13 @@ pub fn render_hex_map(
                 let axial = Axial::new(q_tile as i32, r_tile as i32);
                 let (x, y) = map.terrain.axial_to_pixel(axial);
 
-                let terrain_tile = if let Some(tile) = map.terrain.get_tile(&axial.to_hex()) {
+                let terrain_tile = if let Some(tile) = map.terrain.get_tile(axial.to_hex()) {
                     tile
                 } else {
                     continue;
                 };
     
-                let flow_tile = if let Some(tile) = map.dijkstra.get_tile(&axial.to_hex()) {
+                let flow_tile = if let Some(tile) = map.dijkstra.get_tile(axial.to_hex()) {
                     tile
                 } else {
                     continue;

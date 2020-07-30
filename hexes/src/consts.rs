@@ -21,4 +21,4 @@ pub const WIDTH: usize = 2;
 pub const HEIGHT: usize = 2;
 
 pub const DRAW_DOTS: bool = true;
-pub const DRAW_FLOW: bool = true;
+pub const DRAW_FLOW: bool = false;
