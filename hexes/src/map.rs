@@ -76,8 +76,7 @@ impl Map {
 
         let mut terrain = HexMap::<HexTileData>::new(hex_width, hex_height, hex_vert_step, hex_depth_step, wall_vert_offset, wall_vert_step);
 
-        let mut rand = StdRng::seed_from_u64(10);
-        //let mut rand = StdRng::from_entropy();
+        let mut rand = StdRng::from_entropy();
         let mut chunks = vec![];
         let mut tallest = 0;
         for q in 0..WIDTH {

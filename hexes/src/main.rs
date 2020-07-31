@@ -64,6 +64,10 @@ impl Game {
         world.add_unique((*ctx.input_context()).clone());
         world.add_unique_non_send_sync(Drawables::new(ctx).unwrap());
 
+        world.run(|mut all_storages| {
+            entity_creator::create_base(Axial::new(10, 5), &mut all_storages);
+        });
+
         world.entity_builder()
             .with(Spawner::new(120))
             .with(Transform::new(Axial::new(-5, -7)))
@@ -72,8 +76,9 @@ impl Game {
         world
             .add_rendering_workload(ctx)
             .with_rendering_systems()
-            .with_system(system!(systems::render_hex_map))
+            .with_system(system!(systems::draw_hex_map))
             .with_system(system!(systems::draw_agent_paths))
+            .with_system(system!(systems::draw_entities))
             .build();
 
         Ok(Game {
