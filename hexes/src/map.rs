@@ -113,7 +113,7 @@ impl Map {
     }
 
     pub fn get_path(&self, start: Hex) -> Option<Vec<Hex>> {
-        let mut path = vec![];
+        let mut path = vec![start];
 
         self.dijkstra.get_tile(start)?;
 
