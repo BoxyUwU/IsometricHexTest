@@ -102,8 +102,10 @@ impl Map {
             terrain.insert_chunk(chunk);
         }
 
-        let mut dijkstra = HexMap::<HexPathNode>::new(hex_width, hex_height, hex_vert_step, hex_depth_step, wall_vert_offset, wall_vert_step); 
-        update_dijkstra_hexmap(&terrain, &mut dijkstra, Axial::new(10, 5).to_hex());
+        let mut dijkstra = HexMap::<HexPathNode>::new(hex_width, hex_height, hex_vert_step, hex_depth_step, wall_vert_offset, wall_vert_step);
+        
+        let goal_hex = Axial::new(10, 5).to_hex();
+        update_dijkstra_hexmap(&terrain, &mut dijkstra, vec![goal_hex + Axial::new(0, 1), goal_hex + Axial::new(1, 1)]);
 
         Map {
             terrain,
@@ -152,14 +154,15 @@ impl HexTileData {
     }
 }
 
-pub fn update_dijkstra_hexmap(terrain: &HexMap<HexTileData>, dijkstra: &mut HexMap<HexPathNode>, goal: Hex) {
-    let mut open_set = vec![goal];
-    dijkstra.set_tile(&goal, HexPathNode::Goal);
+pub fn update_dijkstra_hexmap(terrain: &HexMap<HexTileData>, dijkstra: &mut HexMap<HexPathNode>, mut goals: Vec<Hex>) {
+    for hex in goals.iter() {
+        dijkstra.set_tile(hex, HexPathNode::Goal);
+    }
 
-    while !open_set.is_empty() {
-        let length = open_set.len();
+    while !goals.is_empty() {
+        let length = goals.len();
         for _ in 0..length {
-            let tile = *open_set.first().unwrap();
+            let tile = *goals.first().unwrap();
             let neighbors = tile
                 .neighbors()
                 .iter()
@@ -184,11 +187,11 @@ pub fn update_dijkstra_hexmap(terrain: &HexMap<HexTileData>, dijkstra: &mut HexM
                 .collect::<Vec<Hex>>();
         
             for neighbor in neighbors {
-                open_set.push(neighbor);
+                goals.push(neighbor);
                 dijkstra.set_tile(&neighbor, HexPathNode::from_hexes(tile, neighbor));
             }
         
-            open_set.remove(0);
+            goals.remove(0);
         }
     }
 }
