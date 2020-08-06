@@ -96,6 +96,7 @@ impl State for Game {
 
         self.world.run(systems::move_camera);
         self.world.run(systems::update_hex_map);
+        self.world.run(systems::move_agents);
         self.world.run(systems::spawn_agents);
 
         Ok(())

@@ -102,8 +102,7 @@ impl Map {
             terrain.insert_chunk(chunk);
         }
 
-        let mut dijkstra = HexMap::<HexPathNode>::new(hex_width, hex_height, hex_vert_step, hex_depth_step, wall_vert_offset, wall_vert_step);
-        
+        let mut dijkstra = HexMap::<HexPathNode>::new(hex_width, hex_height, hex_vert_step, hex_depth_step, wall_vert_offset, wall_vert_step);        
         let goal_hex = Axial::new(10, 5).to_hex();
         update_dijkstra_hexmap(&terrain, &mut dijkstra, vec![goal_hex + Axial::new(0, 1), goal_hex + Axial::new(1, 1)]);
 
@@ -155,6 +154,8 @@ impl HexTileData {
 }
 
 pub fn update_dijkstra_hexmap(terrain: &HexMap<HexTileData>, dijkstra: &mut HexMap<HexPathNode>, mut goals: Vec<Hex>) {
+    dijkstra.clear_map();
+   
     for hex in goals.iter() {
         dijkstra.set_tile(hex, HexPathNode::Goal);
     }

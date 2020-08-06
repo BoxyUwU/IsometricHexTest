@@ -23,7 +23,7 @@ use crate::consts::*;
 
 pub fn create_agent(position: Axial, world: &mut AllStoragesViewMut) {
     let sprite = world.run(|drawables: NonSendSync<UniqueViewMut<Drawables>>| {
-        drawables.alias[textures::MARKER]
+        drawables.alias[textures::ENEMY]
     });
 
     world.entity_builder()

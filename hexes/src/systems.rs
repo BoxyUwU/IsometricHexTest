@@ -50,6 +50,17 @@ use vermarine_lib::{
     },
 };
 
+pub fn move_agents(map: UniqueView<Map>, agents: View<Agent>, mut transforms: ViewMut<Transform>) {
+    for (_, transform) in (&agents, &mut transforms).iter() {
+        if let Some(path) = map.get_path(transform.position.to_hex()) {
+            if let Some(pos) = path.get(1) {
+                transform.position = pos.to_axial();
+            }
+        }
+        
+    }
+}
+
 pub fn draw_entities(
     map: UniqueView<Map>,
     mut draw_buffer: UniqueViewMut<DrawBuffer>, 
@@ -184,29 +195,44 @@ pub fn update_hex_map(input_ctx: UniqueView<InputContext>, mut map: UniqueViewMu
     
     let tile = map.terrain.get_tile_mut(axial.to_hex()).unwrap();
 
+    let mut modified = false;
+
     if input::is_mouse_button_pressed(&input_ctx, MouseButton::Left) {
         if tile.ground_height > tile.wall_height && tile.ground_height > 0 {
             tile.ground_height -= 1;
+            modified = true;
         }
         else if tile.wall_height > tile.ground_height && tile.wall_height > 0 {
             tile.wall_height -= 1;
+            modified = true;
         }
         else if tile.wall_height == tile.ground_height && tile.wall_height > 0 {
             tile.wall_height -= 1;
             tile.ground_height -= 1;
+            modified = true;
         }
     } else if input::is_mouse_button_pressed(&input_ctx, MouseButton::Right) {
         if tile.ground_height > tile.wall_height {
             tile.wall_height = tile.ground_height + 1;
+            modified = true;
         }
         else if tile.wall_height >= tile.ground_height && tile.wall_height < MAX_BRICK_HEIGHT {
             tile.wall_height += 1;
+            modified = true;
         }
     }
 
-    let height = tile.wall_height;
-    if height > map.terrain.tallest {
-        map.terrain.tallest = height;
+    if modified {
+        let tile = map.terrain.get_tile_mut(axial.to_hex()).unwrap();
+        
+        let height = tile.wall_height;
+        if height > map.terrain.tallest {
+            map.terrain.tallest = height;
+        }
+        
+        let goal_hex = Axial::new(10, 5).to_hex();
+        let map = &mut *map;
+        crate::map::update_dijkstra_hexmap(&map.terrain, &mut map.dijkstra, vec![goal_hex + Axial::new(0, 1), goal_hex + Axial::new(1, 1)]);
     }
 }
 
@@ -316,7 +342,7 @@ pub fn draw_hex_map(
                 draw_buffer.draw(
                     DrawCommand::new(marker_tex)
                         .position(Vec3::new(
-                            x + 18. - 2., y + 18. - 2.0, tile.wall_height as f32 * map.terrain.hex_depth_step 
+                            x, y, tile.wall_height as f32 * map.terrain.hex_depth_step 
                         ))
                         .draw_iso(true)
                 );

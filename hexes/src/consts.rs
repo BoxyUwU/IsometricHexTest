@@ -6,6 +6,7 @@ pub mod textures {
     pub const MARKER: &str = "marker";
     pub const ARROW_SHEET: &str = "arrows";
     pub const BASE: &str = "base";
+    pub const ENEMY: &str = "enemy";
 }
 
 pub mod draw_layers {
