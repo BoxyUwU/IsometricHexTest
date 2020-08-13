@@ -15,8 +15,6 @@ use map::{
 
 use vermarine_lib::{
     rendering::{
-        RenderingWorkloadCreator,
-        RenderingWorkloadSystems,
         Drawables,
         draw_buffer::{
             DrawBuffer,
@@ -58,7 +56,7 @@ pub struct Game {
 
 impl Game {
     pub fn new(ctx: &mut Context) -> tetra::Result<Self> {
-        let mut world = World::new();
+        let world = World::new();
 
         world.add_unique(Map::new());
         world.add_unique((*ctx.input_context()).clone());
@@ -73,13 +71,8 @@ impl Game {
             .with(Transform::new(Axial::new(-5, -7)))
             .build();
 
-        world
-            .add_rendering_workload(ctx)
-            .with_rendering_systems()
-            .with_system(system!(systems::draw_hex_map))
-            .with_system(system!(systems::draw_agent_paths))
-            .with_system(system!(systems::draw_entities))
-            .build();
+        world.add_unique(Camera::with_window_size(ctx));
+        world.add_unique(DrawBuffer::new());
 
         Ok(Game {
             world,
@@ -89,27 +82,31 @@ impl Game {
 
 impl State for Game {
     fn update(&mut self, ctx: &mut Context) -> tetra::Result {
-        let input_ctx = ctx.input_context();
+        let input_ctx = (*ctx.input_context()).clone();
         self.world.run(|mut ctx: UniqueViewMut<InputContext>| {
-            *ctx = (*input_ctx).clone();
+            *ctx = input_ctx;
         });
 
         self.world.run(systems::move_camera);
         self.world.run(systems::update_hex_map);
         self.world.run(systems::move_agents);
         self.world.run(systems::spawn_agents);
-
+            
         Ok(())
     }
 
     fn draw(&mut self, ctx: &mut Context) -> tetra::Result {
         graphics::clear(ctx, Color::rgb(0.392, 0.584, 0.929));
 
-        self.world.run_workload("Rendering");
+        self.world.run(systems::draw_hex_map);
+        self.world.run(systems::draw_agent_paths);
+        self.world.run(systems::draw_entities);
+
         self.world.run(|mut camera: UniqueViewMut<Camera>, mut draw_buff: UniqueViewMut<DrawBuffer>| {
             camera.update();
             draw_buff.transform_mat = camera.as_matrix();
         });
+
         self.world.run_with_data(DrawBuffer::flush, ctx);
 
         Ok(())
