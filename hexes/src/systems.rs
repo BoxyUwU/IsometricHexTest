@@ -47,6 +47,7 @@ use vermarine_lib::{
     hexmap::{
         HexMap,
         Axial,
+        FractionalAxial,
     },
 };
 
@@ -249,7 +250,6 @@ pub fn draw_hex_map(
     let mouse_pos = camera.mouse_position(&input_ctx);
     let selected_hex = map.terrain.pixel_to_hex(mouse_pos);
 
-    use vermarine_lib::hexmap::FractionalAxial;
     let FractionalAxial { q, r }  = map.terrain.pixel_to_hex_raw(camera.position, 0.);
 
     let startq = (q - 40.0) as i32;
@@ -294,7 +294,7 @@ pub fn draw_hex_map(
                     )
                 };
                 
-                if height <= tile.ground_height && height != 0 {
+                if height <= tile.ground_height {
                     draw_hex_walls(&map.terrain, &mut wall_buffer, draw_x, draw_y, height, wall_tex);
                 }
                 if height > tile.ground_height && height <= tile.wall_height {
