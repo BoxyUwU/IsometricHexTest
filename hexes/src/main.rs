@@ -46,6 +46,9 @@ use vermarine_lib::{
 fn main() -> tetra::Result {
     ContextBuilder::new("Hexes", 1280, 720)
         .show_mouse(true)
+        .resizable(true)
+        .timestep(tetra::time::Timestep::Variable)
+        .vsync(true)
         .build()?
         .run(Game::new)
 }
@@ -95,14 +98,29 @@ impl State for Game {
         Ok(())
     }
 
+    fn event(&mut self, _: &mut Context, event: tetra::Event) -> tetra::Result {
+        match event {
+            tetra::Event::Resized { width, height } => {
+                self.world.run(|mut camera: UniqueViewMut<Camera>| {
+                    camera.set_viewport_size((width & !1) as f32, (height & !1) as f32);
+                    camera.update();
+                });
+            },
+            _ => { },
+        }
+
+        Ok(())
+    }
+
     fn draw(&mut self, ctx: &mut Context) -> tetra::Result {
-        graphics::clear(ctx, Color::rgb(0.392, 0.584, 0.929));
+        graphics::clear(ctx, Color::rgb(0.4, 0.6, 0.9));
 
         self.world.run(systems::draw_hex_map);
         self.world.run(systems::draw_agent_paths);
         self.world.run(systems::draw_entities);
 
         self.world.run(|mut camera: UniqueViewMut<Camera>, mut draw_buff: UniqueViewMut<DrawBuffer>| {
+            camera.position.floor();
             camera.update();
             draw_buff.transform_mat = camera.as_matrix();
         });
