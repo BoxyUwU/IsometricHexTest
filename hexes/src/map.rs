@@ -179,7 +179,7 @@ pub fn update_dijkstra_hexmap(terrain: &HexMap<HexTileData>, dijkstra: &mut HexM
                                 (tile_height, hex_height)
                             };
     
-                        larger - smaller <= 1
+                        larger - smaller <= 1 && larger < MAX_BRICK_HEIGHT
                     } else {
                         false
                     }
