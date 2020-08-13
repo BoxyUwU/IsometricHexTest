@@ -365,123 +365,38 @@ pub fn draw_hex_map(
 }
 
 pub fn draw_hex_top(map: &HexMap<HexTileData>, draw_buffer: &mut Vec<DrawCommand>, x: f32, y: f32, height: u8, texture: u64, color: Color) {
-    let mut draw_command = create_floor_draw_cmd(x, y, height as f32 * map.hex_depth_step, height, texture); 
+    let mut draw_command = create_draw_cmd(x, y, height as f32 * map.hex_depth_step, textures::COLOR_TINT[height as usize], texture);
     if color != Color::WHITE {
         draw_command = draw_command.color(color);
     }
     draw_buffer.push(draw_command);
-}
-
-fn create_floor_draw_cmd(x: f32, y: f32, height: f32, color: u8, texture: u64) -> DrawCommand {
-    let color = 
-        if color == 0 {
-            let v = 0.55;
-            Color::rgba(v, v, v, 1.0)
-        } else if color == 1 {
-            let v = 0.8;
-            Color::rgba(v, v, v, 1.0)
-        } else {
-            let v = 0.95;
-            Color::rgba(v, v, v, 1.0)
-        };
-
-    DrawCommand::new(texture)
-        .position(Vec3::new(x, y, height))
-        .draw_layer(draw_layers::FLOOR)
-        .draw_iso(true)
-        .color(color)
 }
 
 pub fn draw_hex_brick_top(map: &HexMap<HexTileData>, draw_buffer: &mut Vec<DrawCommand>, x: f32, y: f32, height: u8, texture: u64, color: Color) {
-    let mut draw_command = create_brick_floor_draw_cmd(x, y, height as f32 * map.hex_depth_step, height, texture); 
+    let mut draw_command = create_draw_cmd(x, y, height as f32 * map.hex_depth_step, textures::COLOR_TINT[height as usize], texture);
     if color != Color::WHITE {
         draw_command = draw_command.color(color);
     }
     draw_buffer.push(draw_command);
-}
-
-fn create_brick_floor_draw_cmd(x: f32, y: f32, height: f32, color: u8, texture: u64) -> DrawCommand {
-    let color = 
-        if color == 1 {
-            let v = 0.65;
-            Color::rgba(v, v, v, 1.0)
-        } else if color == 2 {
-            let v = 0.8;
-            Color::rgba(v, v, v, 1.0)
-        } else if color == 3 {
-            let v = 0.9;
-            Color::rgba(v, v, v, 1.0)
-        } else {
-            let v = 1.0;
-            Color::rgba(v, v, v, 1.0)
-        };
-
-    DrawCommand::new(texture)
-        .position(Vec3::new(x, y, height))
-        .draw_layer(draw_layers::FLOOR)
-        .draw_iso(true)
-        .color(color)
 }
 
 pub fn draw_hex_walls(map: &HexMap<HexTileData>, draw_buffer: &mut Vec<DrawCommand>, x: f32, y: f32, height: u8, wall_tex: u64) {
     let start_height = height as f32 * map.hex_depth_step - map.wall_vert_offset;
-    let color = 
-        if height % 2 == 1 {
-            1
-        } else {
-            2
-        };
     draw_buffer.push(
-        create_wall_draw_cmd(x, y, start_height, color, wall_tex)
+        create_draw_cmd(x, y, start_height, textures::COLOR_TINT[height as usize], wall_tex)
     );
-}
-
-fn create_wall_draw_cmd(x: f32, y: f32, height: f32, color: u8, texture: u64) -> DrawCommand {
-    let color =
-        if color == 1 {
-            let v = 0.5;
-            Color::rgba(v, v, v, 1.0)
-        } else if color == 2{
-            let v = 0.7;
-            Color::rgba(v, v, v, 1.0)
-        } else {
-            let v = 1.0;
-            Color::rgba(v, v, v, 1.0)
-        };
-
-    DrawCommand::new(texture)
-        .position(Vec3::new(x, y, height))
-        .draw_layer(draw_layers::WALL)
-        .draw_iso(true)
-        .color(color)
 }
 
 pub fn draw_hex_bricks(map: &HexMap<HexTileData>, draw_buffer: &mut Vec<DrawCommand>, x: f32, y: f32, height: u8, brick_tex: u64) {
     let start_height = height as f32 * map.hex_depth_step - map.wall_vert_step;
     draw_buffer.push(
-        create_wall_brick_draw_cmd(x, y, start_height, height, brick_tex)
+        create_draw_cmd(x, y, start_height, textures::COLOR_TINT[height as usize], brick_tex)
     );
 }
 
-fn create_wall_brick_draw_cmd(x: f32, y: f32, height: f32, color: u8, texture: u64) -> DrawCommand {
-    let color =
-        if color == 1 {
-            let v = 0.3;
-            Color::rgba(v, v, v, 1.0)
-        } else if color == 2 {
-            let v = 0.55;
-            Color::rgba(v, v, v, 1.0)
-        } else if color == 3 {
-            let v = 0.7;
-            Color::rgba(v, v, v, 1.0)
-        } else {
-            let v = 0.80;
-            Color::rgba(v, v, v, 1.0)
-        };
-
+pub fn create_draw_cmd(x: f32, y: f32, height: f32, tint: f32, texture: u64) -> DrawCommand {
     DrawCommand::new(texture)
         .position(Vec3::new(x, y, height))
-        .draw_layer(draw_layers::WALL)
         .draw_iso(true)
-        .color(color)
+        .color(Color::rgba(tint, tint, tint, 1.0))
 }
