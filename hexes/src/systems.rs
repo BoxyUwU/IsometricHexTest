@@ -62,33 +62,24 @@ pub fn move_agents(map: UniqueView<Map>, agents: View<Agent>, mut transforms: Vi
     }
 }
 
-pub fn draw_entities(
-    map: UniqueView<Map>,
-    mut draw_buffer: UniqueViewMut<DrawBuffer>, 
-    transforms: View<Transform>,
-    sprites: View<Sprite>,
-) {
-    draw_buffer.new_command_pool(false);
+pub fn draw_entities_at_height(height: u8, buffer: &mut Vec<DrawCommand>, map: &Map, transforms: &View<Transform>, sprites: &View<Sprite>) {    
+    for (transform, sprite) in (transforms, sprites).iter().filter(|(&transform, _)| {
+        let tile_height = map.terrain
+            .get_tile(transform.position.to_hex())
+            .map(|hex| hex.wall_height)
+            .unwrap_or(0) as u8;
 
-    for (transform, sprite) in (&transforms, &sprites).iter() {
-        let depth = 
-            if let Some(hex) = map.terrain.get_tile(transform.position.to_hex()) {
-                hex.wall_height
-            } else {
-                0
-            };
-
-        let offset_y = depth as f32 * map.terrain.hex_depth_step * -1.;
-
+        tile_height == height
+    }) {
+        let offset_y = height as f32 * map.terrain.hex_depth_step * -1.;
+        
         let mut draw_cmd = sprite.0;
         let position = map.terrain.axial_to_pixel(transform.position);
-        draw_cmd.position.x += position.0;
-        draw_cmd.position.y += position.1 + offset_y;
+        draw_cmd.position.x += position.x;
+        draw_cmd.position.y += position.y + offset_y;
 
-        draw_buffer.draw(draw_cmd);
+        buffer.push(draw_cmd);
     }
-
-    draw_buffer.end_command_pool();
 }
 
 pub fn spawn_agents(mut all_storages: AllStoragesViewMut) {
@@ -131,7 +122,7 @@ pub fn draw_agent_paths(
 }
 
 pub fn draw_arrow(draw_buffer: &mut DrawBuffer, arrow_sheet: u64, map: &Map, tile: Axial) {
-    let (x, y) = map.terrain.axial_to_pixel(tile);
+    let pos = map.terrain.axial_to_pixel(tile);
 
     let (terrain_tile, flow_tile) = 
         if let (Some(terrain_tile), Some(flow_tile)) = (
@@ -146,7 +137,7 @@ pub fn draw_arrow(draw_buffer: &mut DrawBuffer, arrow_sheet: u64, map: &Map, til
     draw_buffer.draw(
         DrawCommand::new(arrow_sheet)
             .position(Vec3::new(
-                x, y, terrain_tile.wall_height as f32 * map.terrain.hex_depth_step 
+                pos.x, pos.y, terrain_tile.wall_height as f32 * map.terrain.hex_depth_step 
             ))
             .draw_iso(true)
             .clip(
@@ -242,7 +233,9 @@ pub fn draw_hex_map(
     drawables: NonSendSync<UniqueViewMut<Drawables>>, 
     mut draw_buffer: UniqueViewMut<DrawBuffer>, 
     mut map: UniqueViewMut<Map>, 
-    camera: UniqueView<Camera>
+    camera: UniqueView<Camera>,
+    transforms: View<Transform>,
+    sprites: View<Sprite>,
 ) {
     draw_buffer.new_command_pool(true);
     let command_pool = draw_buffer.get_command_pool();
@@ -270,6 +263,9 @@ pub fn draw_hex_map(
         let mut wall_brick_buffer: Vec<DrawCommand> = Vec::with_capacity(1024);
         let mut top_buffer: Vec<DrawCommand> = Vec::with_capacity(1024);
         let mut top_brick_buffer: Vec<DrawCommand> = Vec::with_capacity(1024);
+
+        let mut entity_buffer: Vec<DrawCommand> = Vec::with_capacity(1024);
+
         for r in startr..=endr {
             for q in startq..=endq {
                 let axial = Axial::new(q as i32, r as i32);
@@ -319,10 +315,14 @@ pub fn draw_hex_map(
                 }
             }
         }
+
         command_pool.commands.extend(&wall_buffer);
         command_pool.commands.extend(&wall_brick_buffer);
         command_pool.commands.extend(&top_buffer);
         command_pool.commands.extend(&top_brick_buffer);
+
+        draw_entities_at_height(height, &mut entity_buffer, &*map, &transforms, &sprites);
+        command_pool.commands.extend(&entity_buffer);
     }
     
     // Draw dots at hex centers
@@ -331,7 +331,7 @@ pub fn draw_hex_map(
         for r_tile in startr..=endr {
             for q_tile in startq..=endq {
                 let axial = Axial::new(q_tile as i32, r_tile as i32);
-                let (x, y) = map.terrain.axial_to_pixel(axial);
+                let pos = map.terrain.axial_to_pixel(axial);
                 
                 let tile = if let Some(tile) = map.terrain.get_tile(axial.to_hex()) {
                     tile
@@ -342,7 +342,7 @@ pub fn draw_hex_map(
                 draw_buffer.draw(
                     DrawCommand::new(marker_tex)
                         .position(Vec3::new(
-                            x, y, tile.wall_height as f32 * map.terrain.hex_depth_step 
+                            pos.x, pos.y, tile.wall_height as f32 * map.terrain.hex_depth_step 
                         ))
                         .draw_iso(true)
                 );

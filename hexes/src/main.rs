@@ -4,11 +4,6 @@ mod map;
 mod components;
 mod entity_creator;
 
-use components::{
-    Spawner,
-    Transform,
-};
-
 use map::{
     Map,
 };
@@ -67,12 +62,18 @@ impl Game {
 
         world.run(|mut all_storages| {
             entity_creator::create_base(Axial::new(10, 5), &mut all_storages);
-        });
 
-        world.entity_builder()
-            .with(Spawner::new(120))
-            .with(Transform::new(Axial::new(-5, -7)))
-            .build();
+            entity_creator::create_nest(Axial::new(-5, -7), 120, &mut all_storages);
+            entity_creator::create_nest(Axial::new(12, -15), 120, &mut all_storages);
+            entity_creator::create_nest(Axial::new(-12, -5), 120, &mut all_storages);
+            entity_creator::create_nest(Axial::new(2, -8), 120, &mut all_storages);
+            entity_creator::create_nest(Axial::new(-8, 6), 120, &mut all_storages);
+            entity_creator::create_nest(Axial::new(-5, -15), 120, &mut all_storages);
+            entity_creator::create_nest(Axial::new(11, 14), 120, &mut all_storages);
+            entity_creator::create_nest(Axial::new(5, 13), 120, &mut all_storages);
+            entity_creator::create_nest(Axial::new(2, 4), 120, &mut all_storages);
+            entity_creator::create_nest(Axial::new(14, -3), 120, &mut all_storages);
+        });
 
         world.add_unique(Camera::with_window_size(ctx));
         world.add_unique(DrawBuffer::new());
@@ -117,7 +118,6 @@ impl State for Game {
 
         self.world.run(systems::draw_hex_map);
         self.world.run(systems::draw_agent_paths);
-        self.world.run(systems::draw_entities);
 
         self.world.run(|mut camera: UniqueViewMut<Camera>, mut draw_buff: UniqueViewMut<DrawBuffer>| {
             camera.position.floor();

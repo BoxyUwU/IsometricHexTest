@@ -8,16 +8,12 @@ use vermarine_lib::{
             DrawCommand,
         },
     },
-    tetra::{
-        math::{
-            Vec3,
-        },
-    },
 };
 
 use crate::components::{
     Transform,
     Agent,
+    Spawner,
 };
 use crate::consts::*;
 
@@ -34,7 +30,7 @@ pub fn create_agent(position: Axial, world: &mut AllStoragesViewMut) {
 }
 
 pub fn create_base(position: Axial, world: &mut AllStoragesViewMut) {
-    let sprite = world.run(|drawables: NonSendSync<UniqueViewMut<Drawables>>| {
+    let sprite = world.run(|drawables: NonSendSync<UniqueView<Drawables>>| {
         drawables.alias[textures::BASE]
     });
     
@@ -42,7 +38,18 @@ pub fn create_base(position: Axial, world: &mut AllStoragesViewMut) {
         .with(Transform::new(position))
         .with(Sprite::from_command(
             DrawCommand::new(sprite)
-            .position(Vec3::new(0., -12., 0.))
         ))
+        .build();
+}
+
+pub fn create_nest(postion: Axial, timer: u8, world: &mut AllStoragesViewMut) {
+    let sprite = world.run(|drawables: NonSendSync<UniqueView<Drawables>>| {
+        drawables.alias[textures::NEST]
+    });
+
+    world.entity_builder()
+        .with(Spawner::new(timer))
+        .with(Transform::new(postion))
+        .with(Sprite::new(sprite))
         .build();
 }

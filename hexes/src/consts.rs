@@ -7,6 +7,7 @@ pub mod textures {
     pub const ARROW_SHEET: &str = "arrows";
     pub const BASE: &str = "base";
     pub const ENEMY: &str = "enemy";
+    pub const NEST: &str = "nest-floor";
 
     pub const COLOR_TINT: [f32; 4] = [0.4, 0.6, 0.8, 0.95];
 }
