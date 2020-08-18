@@ -26,7 +26,7 @@ pub enum HexPathNode {
 }
 
 impl HexPathNode {
-    pub fn from_hexes(start: Hex, end: Hex) -> HexPathNode {
+    pub fn from_hex(start: Hex, end: Hex) -> HexPathNode {
         let start = start.to_axial();
         let end = end.to_axial();
 
@@ -44,7 +44,7 @@ impl HexPathNode {
         }
     }
 
-    pub fn to_hexes(&self) -> Hex {
+    pub fn to_hex(&self) -> Hex {
         let (q, r) = match self {
             HexPathNode::TopLeft => (0, -1),
             HexPathNode::TopRight => (1, -1),
@@ -125,7 +125,7 @@ impl Map {
                 return Some(path);
             }
 
-            let mut hex = path_node.to_hexes();
+            let mut hex = path_node.to_hex();
             hex += current_tile;
             
             path.push(hex);
@@ -189,7 +189,7 @@ pub fn update_dijkstra_hexmap(terrain: &HexMap<HexTileData>, dijkstra: &mut HexM
         
             for neighbor in neighbors {
                 goals.push(neighbor);
-                dijkstra.set_tile(&neighbor, HexPathNode::from_hexes(tile, neighbor));
+                dijkstra.set_tile(&neighbor, HexPathNode::from_hex(tile, neighbor));
             }
         
             goals.remove(0);

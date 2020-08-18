@@ -53,12 +53,9 @@ use vermarine_lib::{
 
 pub fn move_agents(map: UniqueView<Map>, agents: View<Agent>, mut transforms: ViewMut<Transform>) {
     for (_, transform) in (&agents, &mut transforms).iter() {
-        if let Some(path) = map.get_path(transform.position.to_hex()) {
-            if let Some(pos) = path.get(1) {
-                transform.position = pos.to_axial();
-            }
+        if let Some(direction) = map.dijkstra.get_tile(transform.position.to_hex()) {
+            transform.position += direction.to_hex().to_axial();
         }
-        
     }
 }
 
