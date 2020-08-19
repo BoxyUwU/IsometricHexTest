@@ -75,6 +75,9 @@ pub fn draw_entities_at_height(height: u8, buffer: &mut Vec<DrawCommand>, map: &
         draw_cmd.position.x += position.x;
         draw_cmd.position.y += position.y + offset_y;
 
+        let tint = textures::COLOR_TINT[height as usize];
+        draw_cmd.color = Color::rgb(tint, tint, tint);
+
         buffer.push(draw_cmd);
     }
 }
