@@ -75,7 +75,10 @@ impl Game {
             entity_creator::create_nest(Axial::new(14, -3), 120, &mut all_storages);
         });
 
-        world.add_unique(Camera::with_window_size(ctx));
+        let mut camera = Camera::with_window_size(ctx);
+        camera.zoom = 1.0;
+        world.add_unique(camera);
+
         world.add_unique(DrawBuffer::new());
 
         Ok(Game {
