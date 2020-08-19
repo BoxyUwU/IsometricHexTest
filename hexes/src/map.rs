@@ -156,7 +156,7 @@ impl HexTileData {
 pub fn update_dijkstra_hexmap(terrain: &HexMap<HexTileData>, dijkstra: &mut HexMap<HexPathNode>, mut goals: Vec<Hex>) {
     dijkstra.clear_map();
    
-    for hex in goals.iter() {
+    for &hex in goals.iter() {
         dijkstra.set_tile(hex, HexPathNode::Goal);
     }
 
@@ -189,7 +189,7 @@ pub fn update_dijkstra_hexmap(terrain: &HexMap<HexTileData>, dijkstra: &mut HexM
         
             for neighbor in neighbors {
                 goals.push(neighbor);
-                dijkstra.set_tile(&neighbor, HexPathNode::from_hex(tile, neighbor));
+                dijkstra.set_tile(neighbor, HexPathNode::from_hex(tile, neighbor));
             }
         
             goals.remove(0);
