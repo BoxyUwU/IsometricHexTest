@@ -102,14 +102,18 @@ impl Map {
             terrain.insert_chunk(chunk);
         }
 
-        let mut dijkstra = HexMap::<HexPathNode>::new(hex_width, hex_height, hex_vert_step, hex_depth_step, wall_vert_offset, wall_vert_step);        
+        let dijkstra = HexMap::<HexPathNode>::new(hex_width, hex_height, hex_vert_step, hex_depth_step, wall_vert_offset, wall_vert_step);        
         let goal_hex = Axial::new(10, 5).to_hex();
-        update_dijkstra_hexmap(&terrain, &mut dijkstra, vec![goal_hex + Axial::new(0, 1), goal_hex + Axial::new(1, 1)]);
 
-        Map {
+        let mut map = Map {
             terrain,
             dijkstra,
-        }
+        };
+
+        let goals = vec![goal_hex + Axial::new(0, 1), goal_hex + Axial::new(1, 1)];
+        map.update_dijkstra(goals);
+
+        map
     }
 
     pub fn get_path(&self, start: Hex) -> Option<Vec<Hex>> {
@@ -132,6 +136,29 @@ impl Map {
             current_tile = hex;
         }
     }
+
+    pub fn flatten_tile(&mut self, hex: Hex, height: u8) {
+        if let Some(tile) = self.terrain.get_tile_mut(hex) {
+            if tile.get_height() == height {
+                return;
+            } else if tile.get_height() < height {
+                tile.wall_height = height;
+            } else if tile.get_height() > height {
+                tile.wall_height = height;
+
+                if tile.ground_height > height {
+                    tile.ground_height = height;
+                }
+            }
+        } else {
+            self.terrain.set_tile(hex, HexTileData::new_wall(height));
+            return;
+        };
+    }
+
+    pub fn update_dijkstra(&mut self, goals: Vec<Hex>) {
+        update_dijkstra_hexmap(&self.terrain, &mut self.dijkstra, goals);
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -144,6 +171,13 @@ impl HexTileData {
     pub fn new(height: u8) -> HexTileData {
         HexTileData {
             ground_height: height,
+            wall_height: height,
+        }
+    }
+
+    pub fn new_wall(height: u8) -> HexTileData {
+        HexTileData {
+            ground_height: 0,
             wall_height: height,
         }
     }

@@ -223,8 +223,8 @@ pub fn update_hex_map(input_ctx: UniqueView<InputContext>, mut map: UniqueViewMu
         }
         
         let goal_hex = Axial::new(10, 5).to_hex();
-        let map = &mut *map;
-        crate::map::update_dijkstra_hexmap(&map.terrain, &mut map.dijkstra, vec![goal_hex + Axial::new(0, 1), goal_hex + Axial::new(1, 1)]);
+        let goals = vec![goal_hex + Axial::new(0, 1), goal_hex + Axial::new(1, 1)];
+        map.update_dijkstra(goals);
     }
 }
 
