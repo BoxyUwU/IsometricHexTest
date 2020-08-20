@@ -1,40 +1,20 @@
-mod systems;
-mod consts;
-mod map;
 mod components;
+mod consts;
 mod entity_creator;
+mod map;
+mod systems;
 
-use map::{
-    Map,
-};
+use map::Map;
 
 use vermarine_lib::{
-    rendering::{
-        Drawables,
-        draw_buffer::{
-            DrawBuffer,
-        },
-    },
+    hexmap::Axial,
+    rendering::{draw_buffer::DrawBuffer, Drawables},
+    shipyard::{self, *},
     tetra::{
         self,
-        ContextBuilder,
-        State,
-        Context,
-        graphics::{
-            Camera,
-            self,
-            Color,
-        },
-        input::{
-            InputContext,
-        },
-    },
-    shipyard::{
-        self,
-        *,
-    },
-    hexmap::{
-        Axial,
+        graphics::{self, Camera, Color},
+        input::InputContext,
+        Context, ContextBuilder, State,
     },
 };
 
@@ -63,16 +43,18 @@ impl Game {
         world.run(|mut all_storages| {
             entity_creator::create_base(Axial::new(10, 5), &mut all_storages);
 
-            entity_creator::create_nest(Axial::new(-5, -7), 120, &mut all_storages);
-            entity_creator::create_nest(Axial::new(12, -15), 120, &mut all_storages);
-            entity_creator::create_nest(Axial::new(-12, -5), 120, &mut all_storages);
-            entity_creator::create_nest(Axial::new(2, -8), 120, &mut all_storages);
-            entity_creator::create_nest(Axial::new(-8, 6), 120, &mut all_storages);
-            entity_creator::create_nest(Axial::new(-5, -15), 120, &mut all_storages);
-            entity_creator::create_nest(Axial::new(11, 14), 120, &mut all_storages);
-            entity_creator::create_nest(Axial::new(5, 13), 120, &mut all_storages);
-            entity_creator::create_nest(Axial::new(2, 4), 120, &mut all_storages);
-            entity_creator::create_nest(Axial::new(14, -3), 120, &mut all_storages);
+            let nest_time = 20;
+
+            entity_creator::create_nest(Axial::new(-5, -7), nest_time, &mut all_storages);
+            entity_creator::create_nest(Axial::new(12, -15), nest_time, &mut all_storages);
+            entity_creator::create_nest(Axial::new(-12, -5), nest_time, &mut all_storages);
+            entity_creator::create_nest(Axial::new(2, -8), nest_time, &mut all_storages);
+            entity_creator::create_nest(Axial::new(-8, 6), nest_time, &mut all_storages);
+            entity_creator::create_nest(Axial::new(-5, -15), nest_time, &mut all_storages);
+            entity_creator::create_nest(Axial::new(11, 14), nest_time, &mut all_storages);
+            entity_creator::create_nest(Axial::new(5, 13), nest_time, &mut all_storages);
+            entity_creator::create_nest(Axial::new(2, 4), nest_time, &mut all_storages);
+            entity_creator::create_nest(Axial::new(14, -3), nest_time, &mut all_storages);
         });
 
         let mut camera = Camera::with_window_size(ctx);
@@ -81,9 +63,7 @@ impl Game {
 
         world.add_unique(DrawBuffer::new());
 
-        Ok(Game {
-            world,
-        })
+        Ok(Game { world })
     }
 }
 
@@ -98,7 +78,7 @@ impl State for Game {
         self.world.run(systems::update_hex_map);
         self.world.run(systems::move_agents);
         self.world.run(systems::spawn_agents);
-            
+
         Ok(())
     }
 
@@ -109,8 +89,8 @@ impl State for Game {
                     camera.set_viewport_size((width & !1) as f32, (height & !1) as f32);
                     camera.update();
                 });
-            },
-            _ => { },
+            }
+            _ => {}
         }
 
         Ok(())
@@ -120,13 +100,15 @@ impl State for Game {
         graphics::clear(ctx, Color::rgb(0.4, 0.6, 0.9));
 
         self.world.run(systems::draw_hex_map);
-        self.world.run(systems::draw_agent_paths);
+        //self.world.run(systems::draw_agent_paths);
 
-        self.world.run(|mut camera: UniqueViewMut<Camera>, mut draw_buff: UniqueViewMut<DrawBuffer>| {
-            camera.position.floor();
-            camera.update();
-            draw_buff.transform_mat = camera.as_matrix();
-        });
+        self.world.run(
+            |mut camera: UniqueViewMut<Camera>, mut draw_buff: UniqueViewMut<DrawBuffer>| {
+                camera.position.floor();
+                camera.update();
+                draw_buff.transform_mat = camera.as_matrix();
+            },
+        );
 
         self.world.run_with_data(DrawBuffer::flush, ctx);
 

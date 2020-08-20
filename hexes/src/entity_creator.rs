@@ -1,31 +1,21 @@
 use vermarine_lib::{
-    shipyard::*,
     hexmap::Axial,
-    rendering::{
-        Sprite,
-        Drawables,
-        draw_buffer::{
-            DrawCommand,
-        },
-    },
+    rendering::{draw_buffer::DrawCommand, Drawables, Sprite},
+    shipyard::*,
 };
 
-use crate::components::{
-    Transform,
-    Agent,
-    Spawner,
-};
+use crate::components::{Agent, Spawner, Transform};
 
 use crate::map::Map;
 
 use crate::consts::*;
 
 pub fn create_agent(position: Axial, world: &mut AllStoragesViewMut) {
-    let sprite = world.run(|drawables: NonSendSync<UniqueViewMut<Drawables>>| {
-        drawables.alias[textures::ENEMY]
-    });
+    let sprite = world
+        .run(|drawables: NonSendSync<UniqueViewMut<Drawables>>| drawables.alias[textures::ENEMY]);
 
-    world.entity_builder()
+    world
+        .entity_builder()
         .with(Transform::new(position))
         .with(Sprite::new(sprite))
         .with(Agent::new())
@@ -33,15 +23,13 @@ pub fn create_agent(position: Axial, world: &mut AllStoragesViewMut) {
 }
 
 pub fn create_base(position: Axial, world: &mut AllStoragesViewMut) {
-    let sprite = world.run(|drawables: NonSendSync<UniqueView<Drawables>>| {
-        drawables.alias[textures::BASE]
-    });
-    
-    world.entity_builder()
+    let sprite =
+        world.run(|drawables: NonSendSync<UniqueView<Drawables>>| drawables.alias[textures::BASE]);
+
+    world
+        .entity_builder()
         .with(Transform::new(position))
-        .with(Sprite::from_command(
-            DrawCommand::new(sprite)
-        ))
+        .with(Sprite::from_command(DrawCommand::new(sprite)))
         .build();
 
     world.run(|mut map: UniqueViewMut<Map>| {
@@ -63,7 +51,7 @@ pub fn create_base(position: Axial, world: &mut AllStoragesViewMut) {
         }
 
         let goals = vec![
-            position.to_hex() + Axial::new(0, 1), 
+            position.to_hex() + Axial::new(0, 1),
             position.to_hex() + Axial::new(1, 1),
         ];
         map.update_dijkstra(goals);
@@ -71,11 +59,11 @@ pub fn create_base(position: Axial, world: &mut AllStoragesViewMut) {
 }
 
 pub fn create_nest(postion: Axial, timer: u8, world: &mut AllStoragesViewMut) {
-    let sprite = world.run(|drawables: NonSendSync<UniqueView<Drawables>>| {
-        drawables.alias[textures::NEST]
-    });
+    let sprite =
+        world.run(|drawables: NonSendSync<UniqueView<Drawables>>| drawables.alias[textures::NEST]);
 
-    world.entity_builder()
+    world
+        .entity_builder()
         .with(Spawner::new(timer))
         .with(Transform::new(postion))
         .with(Sprite::new(sprite))

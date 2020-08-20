@@ -7,15 +7,12 @@ pub struct Transform {
 
 impl Transform {
     pub fn new(position: Axial) -> Self {
-        Transform {
-            position,
-        }
+        Transform { position }
     }
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct Agent {
-}
+pub struct Agent {}
 
 impl Agent {
     pub fn new() -> Self {
@@ -31,9 +28,6 @@ pub struct Spawner {
 
 impl Spawner {
     pub fn new(period: u8) -> Self {
-        Self {
-            period,
-            counter: 1,
-        }
+        Self { period, counter: 1 }
     }
 }

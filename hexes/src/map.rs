@@ -1,15 +1,8 @@
-use vermarine_lib::hexmap::{
-    HexMap,
-    CHUNK_WIDTH,
-    CHUNK_HEIGHT,
-    HexChunk,
-    Hex,
-    Axial,
-};
+use vermarine_lib::hexmap::{Axial, Hex, HexChunk, HexMap, CHUNK_HEIGHT, CHUNK_WIDTH};
 
-use rand::SeedableRng;
-use rand::Rng;
 use rand::rngs::StdRng;
+use rand::Rng;
+use rand::SeedableRng;
 
 use crate::consts::*;
 
@@ -74,7 +67,14 @@ impl Map {
         let wall_vert_offset = 12.;
         let wall_vert_step = 12.;
 
-        let mut terrain = HexMap::<HexTileData>::new(hex_width, hex_height, hex_vert_step, hex_depth_step, wall_vert_offset, wall_vert_step);
+        let mut terrain = HexMap::<HexTileData>::new(
+            hex_width,
+            hex_height,
+            hex_vert_step,
+            hex_depth_step,
+            wall_vert_offset,
+            wall_vert_step,
+        );
 
         let mut rand = StdRng::from_entropy();
         let mut chunks = vec![];
@@ -91,7 +91,7 @@ impl Map {
                     }
                 }
 
-                chunks.push(HexChunk::new(tiles, q as i32 -1, r as i32 -1));
+                chunks.push(HexChunk::new(tiles, q as i32 - 1, r as i32 - 1));
             }
         }
 
@@ -102,13 +102,17 @@ impl Map {
             terrain.insert_chunk(chunk);
         }
 
-        let dijkstra = HexMap::<HexPathNode>::new(hex_width, hex_height, hex_vert_step, hex_depth_step, wall_vert_offset, wall_vert_step);        
+        let dijkstra = HexMap::<HexPathNode>::new(
+            hex_width,
+            hex_height,
+            hex_vert_step,
+            hex_depth_step,
+            wall_vert_offset,
+            wall_vert_step,
+        );
         let goal_hex = Axial::new(10, 5).to_hex();
 
-        let mut map = Map {
-            terrain,
-            dijkstra,
-        };
+        let mut map = Map { terrain, dijkstra };
 
         let goals = vec![goal_hex + Axial::new(0, 1), goal_hex + Axial::new(1, 1)];
         map.update_dijkstra(goals);
@@ -124,14 +128,14 @@ impl Map {
         let mut current_tile = start;
         loop {
             let path_node = *self.dijkstra.get_tile(current_tile).unwrap();
-            
+
             if path_node == HexPathNode::Goal {
                 return Some(path);
             }
 
             let mut hex = path_node.to_hex();
             hex += current_tile;
-            
+
             path.push(hex);
             current_tile = hex;
         }
@@ -187,9 +191,13 @@ impl HexTileData {
     }
 }
 
-pub fn update_dijkstra_hexmap(terrain: &HexMap<HexTileData>, dijkstra: &mut HexMap<HexPathNode>, mut goals: Vec<Hex>) {
+pub fn update_dijkstra_hexmap(
+    terrain: &HexMap<HexTileData>,
+    dijkstra: &mut HexMap<HexPathNode>,
+    mut goals: Vec<Hex>,
+) {
     dijkstra.clear_map();
-   
+
     for &hex in goals.iter() {
         dijkstra.set_tile(hex, HexPathNode::Goal);
     }
@@ -198,34 +206,33 @@ pub fn update_dijkstra_hexmap(terrain: &HexMap<HexTileData>, dijkstra: &mut HexM
         let length = goals.len();
         for _ in 0..length {
             let tile = *goals.first().unwrap();
-            let neighbors = tile
+            let neighbors: Vec<_> = tile
                 .neighbors()
                 .iter()
                 .filter(|&&hex| {
                     if terrain.get_tile(hex).is_some() && dijkstra.get_tile(hex).is_none() {
                         let tile_height = terrain.get_tile(tile).unwrap().get_height();
                         let hex_height = terrain.get_tile(hex).unwrap().get_height();
-                        
-                        let (larger, smaller) = 
-                            if hex_height > tile_height {
-                                (hex_height, tile_height)
-                            } else {
-                                (tile_height, hex_height)
-                            };
-    
+
+                        let (larger, smaller) = if hex_height > tile_height {
+                            (hex_height, tile_height)
+                        } else {
+                            (tile_height, hex_height)
+                        };
+
                         larger - smaller <= 1 && larger < MAX_BRICK_HEIGHT
                     } else {
                         false
                     }
                 })
                 .cloned()
-                .collect::<Vec<Hex>>();
-        
+                .collect();
+
             for neighbor in neighbors {
                 goals.push(neighbor);
                 dijkstra.set_tile(neighbor, HexPathNode::from_hex(tile, neighbor));
             }
-        
+
             goals.remove(0);
         }
     }
